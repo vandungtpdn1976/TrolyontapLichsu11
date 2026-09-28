@@ -1,0 +1,6 @@
+{
+  "name": "Sử Vàng 11 - Ôn Tập & Khảo Thí Lịch Sử 11 GDPT 2018",
+  "description": "Ứng dụng chuyên nghiệp ôn tập Lịch sử lớp 11 THPT GDPT 2018: Trắc nghiệm 4 lựa chọn, Trắc nghiệm Đúng - Sai chuẩn cấu trúc Bộ GD&ĐT, Tự luận vận dụng và Trợ lý AI Thầy Dũng đồng hành.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
