@@ -14,15 +14,43 @@ const PORT = Number(process.env.PORT) || 3000;
 
 app.use(express.json());
 
-// Initialize Gemini SDK with User-Agent as instructed by guidelines
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
-  httpOptions: {
-    headers: {
-      'User-Agent': 'aistudio-build',
-    },
-  },
+// Enable CORS and preflight handling for all environments (Vercel & AI Studio)
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
 });
+
+// Helper: Lấy Gemini API Key linh hoạt từ nhiều biến môi trường phổ biến trên Vercel / AI Studio
+function getGeminiApiKey(): string {
+  return (
+    process.env.GEMINI_API_KEY ||
+    process.env.VITE_GEMINI_API_KEY ||
+    process.env.GOOGLE_API_KEY ||
+    process.env.API_KEY ||
+    ''
+  );
+}
+
+// Khởi tạo Gemini client linh hoạt với User-Agent chuẩn
+function getGeminiClient(): GoogleGenAI {
+  const apiKey = getGeminiApiKey();
+  return new GoogleGenAI({
+    apiKey,
+    httpOptions: {
+      headers: {
+        'User-Agent': 'aistudio-build',
+      },
+    },
+  });
+}
+
+const MISSING_API_KEY_ERROR =
+  'Chưa tìm thấy GEMINI_API_KEY trên môi trường chạy. Nếu em hoặc thầy/cô đang mở web trên Vercel, vui lòng vào Vercel Dashboard -> Chọn Project -> Cài đặt (Settings) -> Environment Variables -> Thêm biến "GEMINI_API_KEY" với API key từ Google AI Studio rồi Redeploy lại nhé!';
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -31,6 +59,7 @@ async function generateContentWithRetryAndFallback(params: {
   contents: any;
   config?: any;
 }) {
+  const ai = getGeminiClient();
   // Thứ tự ưu tiên các mô hình: gemini-3.8-flash -> gemini-flash-latest -> gemini-3.1-flash-lite
   const candidateModels = ['gemini-3.8-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite'];
   let lastError: any = null;
@@ -102,14 +131,31 @@ CÁC NGUYÊN TẮC BẮT BUỘC KHI TRẢ LỜI TRONG KHUNG CHAT:
 - Nếu tài liệu chưa đề cập hoặc không đủ dữ liệu để trả lời, phải nói rõ là tài liệu chưa đề cập, không đoán mò, và chỉ dẫn học sinh xem lại bài nào, trang nào trong SGK.
 - Không đưa trực tiếp đáp án để gian lận thi cử; luôn định hướng phương pháp tư duy để học sinh tự làm chủ kiến thức.`;
 
+// Tạo apiRouter để phục vụ đồng bộ cả khi có prefix /api hoặc không có prefix (hỗ trợ hoàn hảo Vercel Serverless Function & Express)
+const apiRouter = express.Router();
+
+// Endpoint kiểm tra sức khỏe và đồng bộ kết nối giữa AI Studio và Vercel
+apiRouter.get('/health', (_req, res) => {
+  const hasKey = Boolean(getGeminiApiKey());
+  return res.json({
+    status: 'ok',
+    environment: process.env.VERCEL ? 'vercel' : 'local_or_aistudio',
+    hasGeminiKey: hasKey,
+    timestamp: new Date().toISOString(),
+    message: hasKey
+      ? 'Hệ thống AI Sử Vàng 11 sẵn sàng hoạt động.'
+      : 'Cảnh báo: Chưa tìm thấy GEMINI_API_KEY trên môi trường này.',
+  });
+});
+
 // API: Chat with Gia sư AI Thầy Dũng
-app.post('/api/chat', async (req, res) => {
+apiRouter.post('/chat', async (req, res) => {
   try {
     const { messages, context, actionType } = req.body;
 
-    if (!process.env.GEMINI_API_KEY) {
+    if (!getGeminiApiKey()) {
       return res.status(500).json({
-        error: 'Chưa cấu hình GEMINI_API_KEY trên hệ thống.',
+        error: MISSING_API_KEY_ERROR,
       });
     }
 
@@ -155,12 +201,12 @@ app.post('/api/chat', async (req, res) => {
 });
 
 // API: Chấm điểm bài Tự luận Lịch sử 11
-app.post('/api/grade-essay', async (req, res) => {
+apiRouter.post('/grade-essay', async (req, res) => {
   try {
     const { question, rubric, studentAnswer, topicTitle } = req.body;
 
-    if (!process.env.GEMINI_API_KEY) {
-      return res.status(500).json({ error: 'Chưa cấu hình GEMINI_API_KEY.' });
+    if (!getGeminiApiKey()) {
+      return res.status(500).json({ error: MISSING_API_KEY_ERROR });
     }
 
     if (!studentAnswer || studentAnswer.trim().length < 10) {
@@ -260,11 +306,11 @@ Yêu cầu trả về đúng định dạng JSON thuần túy (không bọc mã 
 });
 
 // API: Tạo đề luyện tập nhanh theo chủ đề từ AI
-app.post('/api/generate-quiz', async (req, res) => {
+apiRouter.post('/generate-quiz', async (req, res) => {
   try {
     const { topic, type } = req.body;
-    if (!process.env.GEMINI_API_KEY) {
-      return res.status(500).json({ error: 'Chưa cấu hình GEMINI_API_KEY.' });
+    if (!getGeminiApiKey()) {
+      return res.status(500).json({ error: MISSING_API_KEY_ERROR });
     }
 
     const prompt = `Bạn là Thầy Dũng. Hãy tạo 1 bài luyện tập môn Lịch sử 11 GDPT 2018 về chủ đề: "${topic}".
@@ -329,11 +375,11 @@ ${
 });
 
 // API: Chế độ ôn tập thông minh (Smart Study) - Gia sư AI soạn kiến thức trọng tâm, cụ thể theo 3 cấp độ (Biết, Hiểu, Vận dụng)
-app.post('/api/smart-study', async (req, res) => {
+apiRouter.post('/smart-study', async (req, res) => {
   try {
     const { topicTitle, lessonName, studentKnowledgeInput, focusLevel } = req.body;
-    if (!process.env.GEMINI_API_KEY) {
-      return res.status(500).json({ error: 'Chưa cấu hình GEMINI_API_KEY.' });
+    if (!getGeminiApiKey()) {
+      return res.status(500).json({ error: MISSING_API_KEY_ERROR });
     }
 
     const inputContext = studentKnowledgeInput?.trim() || '';
@@ -573,9 +619,13 @@ Trả về đúng định dạng JSON thuần túy (không bọc markdown thừa
   }
 });
 
+// Gắn router vào cả /api và root để mọi yêu cầu (dù qua rewrite Vercel hay trực tiếp Express) đều nhận diện chính xác
+app.use('/api', apiRouter);
+app.use(apiRouter);
+
 // Serve frontend in dev (via vite middleware) or production
 async function startServer() {
-  const isDev = process.env.NODE_ENV !== 'production';
+  const isDev = process.env.NODE_ENV !== 'production' && !process.env.VERCEL;
 
   if (isDev) {
     const { createServer: createViteServer } = await import('vite');
@@ -597,4 +647,10 @@ async function startServer() {
   });
 }
 
-startServer();
+// Khởi động server độc lập trong môi trường local hoặc AI Studio (không lắng nghe port khi chạy dưới dạng Vercel Serverless Function)
+if (!process.env.VERCEL) {
+  startServer();
+}
+
+export default app;
+
