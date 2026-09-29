@@ -28,8 +28,9 @@ Thầy sẽ hỗ trợ em ôn tập kiến thức trọng tâm, bám sát **Sác
 Bây giờ, em muốn chúng mình cùng ôn bài nào trong chương trình Lịch sử 11 trước nè? 📖✨`,
       timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
       suggestedQuestions: [
-        'Thầy giúp em ôn Bài 1: Tiền đề và mục tiêu của các cuộc cách mạng tư sản',
-        'Thầy giúp em ôn Bài 2: Sự xác lập và phát triển của chủ nghĩa tư bản',
+        'Thầy tạo cho em 1 bài tập Đúng - Sai bám sát tư liệu SGK Lịch sử 11',
+        'Thầy phân tích giúp em đoạn tư liệu Lời dặn Trần Quốc Tuấn: "Khoan thư sức dân"',
+        'Thầy giúp em ôn Bài 1 & Bài 2: Cách mạng tư sản và CNTB hiện đại',
         'Quá trình thực dân phương Tây xâm lược Đông Nam Á diễn ra như thế nào?',
         'Các mốc thời gian chính phong trào Cần vương (1885 - 1896) chống Pháp',
         'So sánh xu hướng cứu nước của cụ Phan Bội Châu và cụ Phan Châu Trinh',

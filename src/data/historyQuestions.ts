@@ -450,6 +450,247 @@ export const MULTIPLE_CHOICE_QUESTIONS: MultipleChoiceQuestion[] = [
     trapTip: 'Nhớ câu thơ định mệnh của Nguyễn Trãi: "Việc nhân nghĩa cốt ở yên dân". Nhân nghĩa của ông là nhân nghĩa hành động cứu nước!',
     thayDungAdvice: 'Năm 1980, UNESCO đã vinh danh Nguyễn Trãi là Danh nhân văn hóa thế giới nhân kỷ niệm 600 năm ngày sinh của ông!',
   },
+  // Các câu hỏi mới từ Sách Bài tập Lịch sử 11 Kết nối tri thức với cuộc sống (NXBGDVN)
+  {
+    id: 'mc-20',
+    topicId: 'chu-de-1',
+    lessonName: 'Bài 1: Một số vấn đề chung về cách mạng tư sản',
+    question: 'Đạo Tin lành ở Hà Lan và Thanh giáo ở Anh đóng vai trò gì trong các cuộc cách mạng tư sản thời cận đại?',
+    options: [
+      'A. Ngọn cờ tư tưởng dẫn đường cho giai cấp tư sản và quần chúng nhân dân chống chế độ phong kiến.',
+      'B. Công cụ thống trị duy trì quyền lực độc đoán của Giáo hội Thiên Chúa giáo La Mã.',
+      'C. Xoa dịu mâu thuẫn giai cấp và kêu gọi quần chúng nhân dân quy phục nhà vua.',
+      'D. Thiết lập hệ thống tu viện và củng cố quyền sở hữu ruộng đất của quý tộc.',
+    ],
+    correctIndex: 0,
+    level: 'thong_hieu',
+    explanation: 'Theo Sách bài tập Lịch sử 11 (tr. 5 & tr. 74), khi hệ tư tưởng dân chủ tư sản chưa hình thành hoàn chỉnh, Đạo Tin lành (ở Hà Lan) và Thanh giáo (ở Anh) chính là ngọn cờ tư tưởng tiến bộ dẫn đường cho giai cấp tư sản và quần chúng đấu tranh chống phong kiến.',
+    optionsAnalysis: [
+      'A: ĐÚNG - Tôn giáo cải cách (Tin lành, Thanh giáo) trở thành vũ khí tư tưởng chống lại chế độ phong kiến thần quyền.',
+      'B: SAI - Thiên Chúa giáo La Mã là hệ tư tưởng bảo thủ của chế độ phong kiến.',
+      'C: SAI - Các phong trào cải cách tôn giáo này kích thích tinh thần khởi nghĩa chứ không xoa dịu mâu thuẫn.',
+      'D: SAI - Thanh giáo và Tin lành chủ trương tịch thu ruộng đất giáo hội phong kiến để đưa vào lưu thông TBCN.'
+    ],
+    trapTip: 'Phân biệt: Thiên Chúa giáo bảo thủ đứng về phong kiến; còn Tin lành & Thanh giáo là tôn giáo cải cách đứng về cách mạng tư sản.',
+    thayDungAdvice: 'Các em nhớ: Cải cách tôn giáo chính là phát súng mở màn cho cách mạng tư sản Tây Âu!',
+  },
+  {
+    id: 'mc-21',
+    topicId: 'chu-de-1',
+    lessonName: 'Bài 2: Sự xác lập và phát triển của CNTB',
+    question: 'Bức tranh biếm họa con bạch tuộc khổng lồ Standard Oil (trang 16 SGK Lịch sử 11) phản ánh thực trạng gì của nước Mỹ cuối thế kỉ XIX – đầu thế kỉ XX?',
+    options: [
+      'A. Nạn ô nhiễm môi trường biển nghiêm trọng do khai thác dầu thô.',
+      'B. Mức độ chi phối và thao túng lũng đoạn của các tổ chức độc quyền đối với kinh tế và chính trị nước Mỹ.',
+      'C. Sự suy thoái và phá sản hàng loạt của ngành công nghiệp khai khoáng.',
+      'D. Cuộc chạy đua quân sự đóng tàu ngầm giữa các cường quốc tư bản.',
+    ],
+    correctIndex: 1,
+    level: 'thong_hieu',
+    explanation: 'Theo Sách bài tập Lịch sử 11 (tr. 9 & tr. 75), con bạch tuộc khổng lồ Standard Oil vươn các xúc tua quấn lấy các cơ quan quyền lực và Quốc hội Mỹ, biểu trưng cho quyền lực bao trùm và sự thao túng toàn diện của các công ti độc quyền đối với kinh tế và chính trị nhà nước tư sản.',
+    optionsAnalysis: [
+      'A: SAI - Đây là tranh biếm họa kinh tế - chính trị, không phản ánh môi trường đơn thuần.',
+      'B: ĐÚNG - Các tổ chức độc quyền thao túng cả cơ quan lập pháp và chính sách nhà nước.',
+      'C: SAI - Ngược lại, ngành dầu khí phát triển cực thịnh và mang lại lợi nhuận độc quyền khổng lồ.',
+      'D: SAI - Bức tranh nói về tập đoàn dầu mỏ Standard Oil của vua dầu mỏ Rockefeller.'
+    ],
+    trapTip: 'Nhìn hình bắt chữ: Standard Oil là tập đoàn dầu mỏ độc quyền sừng sỏ nhất của Mỹ thời bấy giờ.',
+    thayDungAdvice: 'Tranh biếm họa này xuất hiện rất nhiều trong đề thi kiểm tra 45 phút và học kì đó các em!',
+  },
+  {
+    id: 'mc-22',
+    topicId: 'chu-de-2',
+    lessonName: 'Bài 4: Sự phát triển của CNXH từ sau CTTG 2 đến nay',
+    question: 'Trong giai đoạn từ năm 1949 đến giữa những năm 70 của thế kỉ XX, các nước xã hội chủ nghĩa Đông Âu đã đạt được thành tựu nổi bật nào?',
+    options: [
+      'A. Trở thành trung tâm tài chính và thương mại lớn nhất thế giới.',
+      'B. Từ những nước nghèo nàn, lạc hậu đã trở thành các quốc gia công – nông nghiệp phát triển.',
+      'C. Vượt qua Mỹ và Tây Âu về sản lượng điện hạt nhân và vũ khí chiến lược.',
+      'D. Xóa bỏ hoàn toàn khoảng cách kinh tế giữa các vùng miền và hoàn thành hiện đại hóa số.',
+    ],
+    correctIndex: 1,
+    level: 'nhan_biet',
+    explanation: 'Sách bài tập Lịch sử 11 (tr. 14 & tr. 78): Với sự giúp đỡ chí tình của Liên Xô, từ 1949 đến giữa thập niên 70, các nước Đông Âu đã xây dựng cơ sở vật chất kỹ thuật vững chắc, biến các nước nghèo nàn lạc hậu thành các quốc gia công - nông nghiệp phát triển.',
+    optionsAnalysis: [
+      'A: SAI - Trung tâm tài chính thế giới giai đoạn này vẫn thuộc về Mỹ và Tây Âu.',
+      'B: ĐÚNG - Công nghiệp hóa XHCN đã thay đổi căn bản diện mạo kinh tế Đông Âu.',
+      'C: SAI - Đông Âu không vượt qua Mỹ về các chỉ số này.',
+      'D: SAI - Khoảng cách kinh tế vẫn còn tồn tại và công nghệ số chưa xuất hiện thời kì này.'
+    ],
+    trapTip: 'Từ khóa then chốt: "Từ nước nghèo trở thành quốc gia công - nông nghiệp phát triển".',
+  },
+  {
+    id: 'mc-23',
+    topicId: 'chu-de-3',
+    lessonName: 'Bài 5: Quá trình xâm lược và cai trị của chủ nghĩa thực dân ở Đông Nam Á',
+    question: 'Mục đích chung chủ yếu của chủ nghĩa thực dân phương Tây khi xâm chiếm các quốc gia Đông Nam Á là gì?',
+    options: [
+      'A. Giúp đỡ các nước Đông Nam Á hiện đại hóa bộ máy và phát triển thương mại tự do.',
+      'B. Vơ vét, bòn rút tài nguyên khoáng sản, bóc lột sức lao động và mở rộng thị trường tiêu thụ hàng hóa.',
+      'C. Bảo vệ nền hòa bình và an ninh hàng hải trên các tuyến đường biển huyết mạch.',
+      'D. Hỗ trợ các triều đình phong kiến Đông Nam Á chống lại các thế lực ngoại bang phương Bắc.',
+    ],
+    correctIndex: 1,
+    level: 'thong_hieu',
+    explanation: 'Sách bài tập Lịch sử 11 (tr. 22 & tr. 80): Bản chất của chế độ thực dân là phục vụ lợi ích giai cấp tư sản chính quốc, cướp ruộng đất lập đồn điền (cao su, cà phê, lúa gạo), khai thác triệt để tài nguyên mỏ và vơ vét thuế khóa của nhân dân bản địa.',
+    optionsAnalysis: [
+      'A: SAI - Luận điệu "khai hóa văn minh" chỉ là chiêu bài đạo đức giả che đậy hành vi xâm lược.',
+      'B: ĐÚNG - Bản chất thực sự là bóc lột, vơ vét của cải và độc chiếm thị trường.',
+      'C: SAI - Thực dân phương Tây xâm lược gây chiến tranh và bất ổn khu vực.',
+      'D: SAI - Thực dân đã lật đổ hoặc biến các triều đình phong kiến thành tay sai bù nhìn.'
+    ],
+    trapTip: 'Cảnh giác với luận điệu "khai hóa", "giúp đỡ" của chủ nghĩa thực dân.',
+  },
+  {
+    id: 'mc-24',
+    topicId: 'chu-de-4',
+    lessonName: 'Bài 7: Khái quát chiến tranh bảo vệ Tổ quốc',
+    question: 'Câu nói của Trần Quốc Tuấn: "Vừa rồi, Toa Đô, Ô Mã Nhi bốn mặt bao vây, nhưng vì vua tôi đồng tâm, anh em hoà mục, cả nước nhà góp sức, giặc phải bị bắt..." đúc kết bài học lịch sử lớn nhất nào?',
+    options: [
+      'A. Bài học về kết hợp đấu tranh quân sự với ngoại giao hòa hiếu.',
+      'B. Bài học phát huy sức mạnh khối đại đoàn kết toàn dân tộc trong chiến tranh giữ nước.',
+      'C. Bài học chớp thời cơ và đánh nhanh thắng nhanh.',
+      'D. Chiến thuật bao vây tiêu diệt quân giặc trên sông ngòi.',
+    ],
+    correctIndex: 1,
+    level: 'thong_hieu',
+    explanation: 'Sách bài tập Lịch sử 11 (tr. 38 & tr. 83): Câu nói tổng kết nguyên nhân thắng lợi của cuộc kháng chiến chống Mông - Nguyên khẳng định yếu tố quyết định nhất là tinh thần đoàn kết từ trong nội bộ hoàng tộc đến toàn thể nhân dân ("vua tôi đồng tâm, anh em hòa mục, cả nước nhà góp sức").',
+    optionsAnalysis: [
+      'A: SAI - Đây là bài học đối ngoại, không phải trọng tâm câu nói.',
+      'B: ĐÚNG - Sức mạnh đoàn kết toàn dân là cội nguồn của mọi thắng lợi dựng nước và giữ nước.',
+      'C: SAI - Kháng chiến chống Mông - Nguyên thực hiện kế sách "thanh dã", trường kỳ đánh giặc chứ không đánh nhanh.',
+      'D: SAI - Câu nói nói về sức mạnh lòng dân, không chỉ nói về chiến thuật cụ thể.'
+    ],
+    trapTip: 'Từ khóa "vua tôi đồng tâm, anh em hòa mục, cả nước góp sức" -> chắc chắn là bài học ĐẠI ĐOÀN KẾT TOÀN DÂN TỘC.',
+    thayDungAdvice: 'Đây là câu nói kinh điển của Hưng Đạo Đại Vương, các em nhớ kỹ để phân tích trong cả câu hỏi tự luận nhé!',
+  },
+  {
+    id: 'mc-25',
+    topicId: 'chu-de-4',
+    lessonName: 'Bài 8: Khởi nghĩa và chiến tranh giải phóng dân tộc',
+    question: 'Trận đánh nào buộc quân Minh phải đầu hàng và chấp nhận mở Hội thề Đông Quan rút toàn bộ quân về nước?',
+    options: [
+      'A. Bồ Ải – Trà Lân (1424).',
+      'B. Tốt Động – Chúc Động (1426).',
+      'C. Tân Bình – Thuận Hoá (1425).',
+      'D. Chi Lăng – Xương Giang (1427).',
+    ],
+    correctIndex: 3,
+    level: 'nhan_biet',
+    explanation: 'Sách bài tập Lịch sử 11 (tr. 43 & tr. 84): Trận đại thắng Chi Lăng - Xương Giang cuối năm 1427 tiêu diệt và bắt sống gần 10 vạn viện binh giặc (chém đầu Liễu Thăng, bắt Lương Minh, Thôi Tụ), đập tan hoàn toàn ý chí xâm lược của nhà Minh, buộc Vương Thông phải xin hàng và rút quân về nước.',
+    optionsAnalysis: [
+      'A: SAI - Trận Bồ Ải - Trà Lân mở đầu thắng lợi khi nghĩa quân chuyển quân vào Nghệ An.',
+      'B: SAI - Trận Tốt Động - Chúc Động (1426) tiêu diệt viện binh Vương Thông ở cửa ngõ Thăng Long nhưng chưa kết thúc chiến tranh.',
+      'C: SAI - Giải phóng Tân Bình - Thuận Hóa mở rộng căn cứ vào miền Trung.',
+      'D: ĐÚNG - Trận quyết chiến chiến lược đè bẹp đạo viện binh cuối cùng, quyết định toàn cục thắng lợi.'
+    ],
+    trapTip: 'Phân biệt: Tốt Động - Chúc Động (1426) đẩy quân Minh vào thế phòng ngự; còn Chi Lăng - Xương Giang (1427) tiêu diệt 10 vạn viện binh và kết thúc chiến tranh.',
+  },
+  {
+    id: 'mc-26',
+    topicId: 'chu-de-5',
+    lessonName: 'Bài 9: Cuộc cải cách của Hồ Quý Ly và Triều Hồ',
+    question: 'Dưới triều Hồ, quốc hiệu của nước ta là gì?',
+    options: [
+      'A. Đại Cồ Việt.',
+      'B. Đại Ngu.',
+      'C. Đại Việt.',
+      'D. Đại Nam.',
+    ],
+    correctIndex: 1,
+    level: 'nhan_biet',
+    explanation: 'Sách bài tập Lịch sử 11 (tr. 47 & tr. 86): Năm 1400, sau khi lên ngôi, Hồ Quý Ly đặt quốc hiệu nước ta là Đại Ngu (chữ "Ngu" ở đây có nghĩa là sự an vui, yên ổn, thái bình theo điển tích thời vua Ngu Thuấn).',
+    optionsAnalysis: [
+      'A: SAI - Quốc hiệu thời Đinh và đầu thời Tiền Lê (968 - 1054).',
+      'B: ĐÚNG - Quốc hiệu thời nhà Hồ (1400 - 1407).',
+      'C: SAI - Quốc hiệu từ thời Lý Thánh Tông (1054) đến trước năm 1400 và thời Lê, Tây Sơn.',
+      'D: SAI - Quốc hiệu từ thời vua Minh Mạng (1838) thời nhà Nguyễn.'
+    ],
+    trapTip: 'Lưu ý: "Đại Ngu" mang nghĩa là niềm vui lớn, thái bình thịnh trị, không phải nghĩa tiêu cực trong tiếng Việt hiện đại.',
+  },
+  {
+    id: 'mc-27',
+    topicId: 'chu-de-5',
+    lessonName: 'Bài 10: Cuộc cải cách của Lê Thánh Tông',
+    question: 'Cơ quan nào dưới thời vua Lê Thánh Tông có nhiệm vụ thanh tra, giám sát quan lại từ trung ương đến địa phương?',
+    options: [
+      'A. Lục Tự.',
+      'B. Đô sát viện.',
+      'C. Hàn lâm viện.',
+      'D. Cơ mật viện.',
+    ],
+    correctIndex: 1,
+    level: 'nhan_biet',
+    explanation: 'Sách bài tập Lịch sử 11 (tr. 50 & tr. 87): Vua Lê Thánh Tông thành lập Đô sát viện (cùng với Lục Khoa) chuyên trách quyền giám sát, thanh tra, đàn hặc quan lại, ngăn ngừa tệ lộng quyền, tham nhũng.',
+    optionsAnalysis: [
+      'A: SAI - Lục Tự phụ trách các công việc nghi lễ, tự sự chuyên môn.',
+      'B: ĐÚNG - Đô sát viện là cơ quan thanh tra tối cao kiểm soát quyền lực bộ máy nhà nước.',
+      'C: SAI - Hàn lâm viện chuyên trách soạn thảo chiếu chỉ, văn thư của triều đình.',
+      'D: SAI - Cơ mật viện được thành lập sau này dưới thời vua Minh Mạng nhà Nguyễn.'
+    ],
+    trapTip: 'Cặp đôi kiểm soát quyền lực thời Lê Thánh Tông: Đô sát viện và Lục Khoa.',
+  },
+  {
+    id: 'mc-28',
+    topicId: 'chu-de-5',
+    lessonName: 'Bài 11: Cuộc cải cách của Minh Mạng',
+    question: 'Nội dung cốt lõi của "chế độ hồi tỵ" dưới thời vua Minh Mạng là gì?',
+    options: [
+      'A. Những người thân như anh em, cha con, thầy trò không được cùng làm quan một chỗ hoặc cai trị chính quê hương mình.',
+      'B. Quan lại phạm tội tham ô sẽ được tha tội nếu tự nguyện hồi hương làm nông nghiệp.',
+      'C. Quy định quan lại chỉ được giữ chức vụ tối đa trong vòng 1 năm rồi luân chuyển.',
+      'D. Hạn chế con em các gia đình quý tộc tham gia thi cử khoa bảng.',
+    ],
+    correctIndex: 0,
+    level: 'thong_hieu',
+    explanation: 'Sách bài tập Lịch sử 11 (tr. 53 & tr. 88): Chế độ "hồi tỵ" (tránh xa sự quen biết, thân thuộc) quy định nghiêm ngặt: quan lại không được bổ nhiệm làm quan tại chính quê hương, quê vợ, nơi từng đi học; người thân thích không được cùng làm việc trong một cơ quan để chống tệ bè phái, gia đình trị.',
+    optionsAnalysis: [
+      'A: ĐÚNG - Bản chất của hồi tỵ là tránh quan hệ thân tộc lũng đoạn công quyền.',
+      'B: SAI - Thời Minh Mạng xử phạt quan lại tham nhũng cực kỳ nghiêm khắc (xử tử, chém đầu).',
+      'C: SAI - Nhiệm kỳ quan lại không phải là 1 năm.',
+      'D: SAI - Triều Nguyễn khuyến khích thi cử công bằng, ai đỗ đạt mới được bổ nhiệm.'
+    ],
+    trapTip: 'Nhớ câu khẩu quyết: "Hồi tỵ = Tránh người nhà, tránh quê hương để công tâm xử án".',
+    thayDungAdvice: 'Chế độ hồi tỵ của vua Minh Mạng là một bài học lịch sử cực kì quý báu cho công tác phòng chống tham nhũng, bổ nhiệm cán bộ hiện nay của nước ta!',
+  },
+  {
+    id: 'mc-29',
+    topicId: 'chu-de-6',
+    lessonName: 'Bài 12: Vị trí và tầm quan trọng của Biển Đông',
+    question: 'Biển Đông là vùng biển rộng lớn với diện tích khoảng bao nhiêu và xếp thứ mấy trong các biển trên thế giới?',
+    options: [
+      'A. Khoảng 3,44 triệu km², là biển lớn thứ hai thế giới (sau biển San Hô).',
+      'B. Khoảng 1 triệu km², là biển lớn thứ năm thế giới.',
+      'C. Khoảng 5 triệu km², là biển lớn nhất thế giới.',
+      'D. Khoảng 2,5 triệu km², là biển lớn thứ tư thế giới.',
+    ],
+    correctIndex: 0,
+    level: 'nhan_biet',
+    explanation: 'Sách giáo khoa và Sách bài tập Lịch sử 11: Biển Đông có diện tích khoảng 3,44 triệu km², trải rộng từ 3 độ vĩ Nam đến 26 độ vĩ Bắc, là biển lớn thứ hai trên thế giới (chỉ sau biển San Hô ở châu Đại Dương).',
+  },
+  {
+    id: 'mc-30',
+    topicId: 'chu-de-6',
+    lessonName: 'Bài 13: Việt Nam và Biển Đông',
+    question: 'Văn bản pháp luật nào của Việt Nam quy định đầy đủ nhất về quy chế pháp lý các vùng biển của Việt Nam và các biện pháp bảo vệ chủ quyền biển hiện nay?',
+    options: [
+      'A. Công ước Luật Biển năm 1982 của Liên Hợp Quốc (UNCLOS).',
+      'B. Luật Biên giới quốc gia năm 2003.',
+      'C. Bộ luật Hàng hải Việt Nam năm 2005.',
+      'D. Luật Biển Việt Nam năm 2012.',
+    ],
+    correctIndex: 3,
+    level: 'nhan_biet',
+    explanation: 'Sách bài tập Lịch sử 11 (tr. 60 & tr. 91, câu 14): Luật Biển Việt Nam được Quốc hội khóa XIII thông qua ngày 21-6-2012, có hiệu lực từ ngày 1-1-2013, là văn bản pháp luật đầy đủ và toàn diện nhất khẳng định chủ quyền, quyền chủ quyền và quyền tài phán của Việt Nam đối với các vùng biển và hai quần đảo Hoàng Sa, Trường Sa.',
+    optionsAnalysis: [
+      'A: SAI - UNCLOS 1982 là văn bản điều ước quốc tế, không phải văn bản luật quốc nội của Việt Nam.',
+      'B: SAI - Luật Biên giới quốc gia quy định chung về biên giới đất liền, biển, trên không.',
+      'C: SAI - Bộ luật Hàng hải chuyên về vận tải và hoạt động kinh tế hàng hải.',
+      'D: ĐÚNG - Luật Biển Việt Nam 2012 là đạo luật chuyên biệt, toàn diện nhất về biển đảo của nước ta.'
+    ],
+    trapTip: 'Câu hỏi hỏi về "Văn bản của Việt Nam" -> Chọn Luật Biển Việt Nam năm 2012 (chứ không chọn UNCLOS vì UNCLOS là của LHQ).',
+    thayDungAdvice: 'Em chú ý phân biệt: UNCLOS 1982 là của Liên Hợp Quốc, còn của Việt Nam ban hành là Luật Biển Việt Nam năm 2012!',
+  },
 ];
 
 export const TRUE_FALSE_QUESTIONS: TrueFalseQuestion[] = [
@@ -734,6 +975,360 @@ Mà còn mở nền thái bình muôn thuở.”`,
     thayDungAnalysis:
       'Thầy Dũng phân tích: Điểm sáng chói nhất trong nghệ thuật quân sự Lam Sơn là "Đánh vào lòng người" (tâm công) và kết thúc chiến tranh bằng hòa hiếu. Cấp ngựa, cấp thuyền cho giặc về nước là đỉnh cao văn hiến Đại Việt!',
   },
+
+  // Câu hỏi Đúng - Sai mới từ Sách Bài tập Lịch sử 11 Kết nối tri thức với cuộc sống (NXBGDVN)
+  {
+    id: 'tf-8',
+    topicId: 'chu-de-1',
+    lessonName: 'Bài 2: Sự xác lập và phát triển của CNTB',
+    title: 'Tư liệu về bức tranh biếm họa con bạch tuộc độc quyền Standard Oil',
+    passage: `“Trong bức tranh biếm họa xuất bản tại Mỹ đầu thế kỉ XX, con bạch tuộc khổng lồ mang dòng chữ Standard Oil (công ti độc quyền dầu mỏ của vua dầu mỏ Rockefeller) vươn các vòi khổng lồ quấn chặt lấy các ngành kinh tế, các mỏ khai khoáng, nhà băng và bao trùm cả toà nhà Quốc hội Mỹ. Trong khi đó, toà nhà Quốc hội Mỹ được vẽ với kích thước tí hon nằm lọt thỏm dưới sức ép của con bạch tuộc độc quyền...”`,
+    source: 'Sách bài tập Lịch sử 11, NXB Giáo dục Việt Nam (tr. 9 & tr. 75), theo tranh biếm họa Puck Magazine (Mỹ, 1904)',
+    statements: [
+      {
+        id: 'a',
+        text: 'Bức tranh biếm họa phản ánh sự hình thành và thống trị lũng đoạn của các tổ chức độc quyền đối với nền kinh tế nước Mỹ đầu thế kỉ XX.',
+        isCorrect: true,
+        explanation: 'Đúng. Standard Oil là tập đoàn độc quyền khống chế tới hơn 90% sản lượng lọc dầu nước Mỹ thời bấy giờ.',
+      },
+      {
+        id: 'b',
+        text: 'Hình ảnh con bạch tuộc quấn quanh toà nhà Quốc hội Mỹ biểu trưng cho việc các công ti độc quyền chi phối cả cơ quan lập pháp và chính sách nhà nước.',
+        isCorrect: true,
+        explanation: 'Đúng. Các trùm tư bản độc quyền dùng tiền bạc tài trợ bầu cử để thao túng các nghị sĩ và điều khiển đường lối đối nội, đối ngoại của nhà nước tư sản.',
+      },
+      {
+        id: 'c',
+        text: 'Sự ra đời của các tổ chức độc quyền đã xóa bỏ hoàn toàn sự cạnh tranh và đem lại công bằng cho các công ty vừa và nhỏ.',
+        isCorrect: false,
+        explanation: 'Sai. Các tổ chức độc quyền chèn ép tàn nhẫn, bóp nghẹt và thôn tính các doanh nghiệp vừa và nhỏ, làm gia tăng bất bình đẳng xã hội.',
+        trapKeywords: ['xóa bỏ hoàn toàn', 'đem lại công bằng'],
+      },
+      {
+        id: 'd',
+        text: 'Ở Mỹ cuối thế kỉ XIX – đầu thế kỉ XX, hình thức tổ chức độc quyền phổ biến nhất là Tơ-rớt (Trust).',
+        isCorrect: true,
+        explanation: 'Đúng. Trust là hình thức sáp nhập quy mô lớn cả sản xuất và tiêu thụ, cực kỳ phát triển tại Mỹ (như Vua thép Morgan, Vua dầu mỏ Rockefeller).',
+      },
+    ],
+    trapAlert: 'Từ bẫy "xóa bỏ hoàn toàn" ở ý c. Độc quyền sinh ra từ cạnh tranh tự do nhưng không triệt tiêu cạnh tranh mà làm cho cạnh tranh càng khốc liệt hơn!',
+    thayDungAnalysis:
+      'Thầy Dũng nhắn nhủ: Bức tranh con bạch tuộc Standard Oil là tư liệu lịch sử rất nổi tiếng. Ý c là bẫy sai kinh điển vì độc quyền không bao giờ đem lại công bằng xã hội!',
+  },
+  {
+    id: 'tf-9',
+    topicId: 'chu-de-2',
+    lessonName: 'Bài 3: Sự hình thành Liên bang CHXHCN Xô viết',
+    title: 'Tư liệu Chủ tịch Hồ Chí Minh và V.I. Lê-nin đánh giá về sự ra đời của Nhà nước Xô viết',
+    passage: `“Chủ tịch Hồ Chí Minh đánh giá: ‘Chủ nghĩa xã hội, chủ nghĩa cộng sản từ chỗ chỉ là một ước mơ cao đẹp của loài người, sau Cách mạng tháng Mười vĩ đại đã trở thành một hiện thực trong xã hội, có sức mạnh vô cùng to lớn lôi cuốn hàng nghìn triệu người vào hành động cách mạng, vì hoà bình, độc lập dân tộc, dân chủ và tiến bộ xã hội’.\nV.I. Lê-nin khẳng định: ‘Chúng ta có quyền tự hào và quả thật chúng ta tự hào là đã có cái hân hạnh được bắt đầu việc xây dựng Nhà nước Xô viết và do đó, mở đầu một thời đại mới trong lịch sử thế giới...’.”`,
+    source: 'Sách bài tập Lịch sử 11, NXB Giáo dục Việt Nam (tr. 13 & tr. 77); Hồ Chí Minh Toàn tập; Lê-nin Toàn tập',
+    statements: [
+      {
+        id: 'a',
+        text: 'Thắng lợi của Cách mạng tháng Mười Nga đã đưa chủ nghĩa xã hội từ lý thuyết khoa học trở thành hiện thực sinh động trong lịch sử nhân loại.',
+        isCorrect: true,
+        explanation: 'Đúng. Bác Hồ khẳng định CNXH từ "ước mơ cao đẹp" đã trở thành "một hiện thực trong xã hội".',
+      },
+      {
+        id: 'b',
+        text: 'Cách mạng tháng Mười Nga chỉ có ý nghĩa hạn hẹp đối với nước Nga và không ảnh hưởng gì tới phong trào giải phóng dân tộc ở châu Á và châu Phi.',
+        isCorrect: false,
+        explanation: 'Sai. Cách mạng tháng Mười đã cổ vũ mạnh mẽ phong trào giải phóng dân tộc ở khắp các châu lục, mở đường cho nhân dân các thuộc địa vùng lên.',
+        trapKeywords: ['chỉ có ý nghĩa hạn hẹp', 'không ảnh hưởng gì'],
+      },
+      {
+        id: 'c',
+        text: 'Lê-nin coi việc xây dựng Nhà nước Xô viết là mốc son mở đầu một thời đại mới trong lịch sử thế giới.',
+        isCorrect: true,
+        explanation: 'Đúng. Lê-nin khẳng định việc lập ra Nhà nước Xô viết đã "mở đầu một thời đại mới trong lịch sử thế giới".',
+      },
+      {
+        id: 'd',
+        text: 'Ánh sáng của Cách mạng tháng Mười Nga đã dẫn đường cho người thanh niên yêu nước Nguyễn Ái Quốc tìm ra con đường cứu nước đúng đắn cho dân tộc Việt Nam.',
+        isCorrect: true,
+        explanation: 'Đúng. Năm 1920, khi đọc Luận cương của Lê-nin về vấn đề dân tộc và thuộc địa, Nguyễn Ái Quốc đã khẳng định: "Đây là cái cần thiết cho chúng ta, đây là con đường giải phóng chúng ta!".',
+      },
+    ],
+    thayDungAnalysis:
+      'Thầy Dũng lưu ý: Đoạn tư liệu này rất quan trọng vì gắn kết trực tiếp giữa Lịch sử thế giới (Cách mạng tháng Mười) với Lịch sử cách mạng Việt Nam và con đường cứu nước của Bác Hồ!',
+  },
+  {
+    id: 'tf-10',
+    topicId: 'chu-de-3',
+    lessonName: 'Bài 5: Xâm lược và cai trị của thực dân ở Đông Nam Á',
+    title: 'Tư liệu Nguyễn Ái Quốc tố cáo tội ác thực dân trong "Bản án chế độ thực dân Pháp"',
+    passage: `“Trong tác phẩm Bản án chế độ thực dân Pháp, Nguyễn Ái Quốc đã tố cáo chính sách thống trị của thực dân Pháp: ‘Một bên là những người bản xứ... họ phải đổ mồ hôi, sôi nước mắt trong những lao tác nặng nhọc nhất, nguy hiểm nhất để kiếm sống một cách chật vật, và hầu như chỉ bằng sức của họ thôi để nuôi mọi ngân quỹ của chính quyền. Một bên là những người Pháp và người nước ngoài: họ đều đi lại tự do, tự dành cho mình tất cả các tài nguyên của đất nước, chiếm đoạt toàn bộ xuất nhập khẩu và tất cả các ngành nghề béo bở nhất, trâng tráo trong cảnh dốt nát và nghèo khốn của nhân dân’.”`,
+    source: 'Nguyễn Ái Quốc, Bản án chế độ thực dân Pháp (1925), trích trong Sách bài tập Lịch sử 11, tr. 22 & tr. 80-81',
+    statements: [
+      {
+        id: 'a',
+        text: 'Tư liệu vạch trần hố sâu ngăn cách và sự bất công cùng cực giữa nhân dân thuộc địa bị bóc lột với tầng lớp thực dân cai trị hưởng mọi đặc quyền.',
+        isCorrect: true,
+        explanation: 'Đúng. Nguyễn Ái Quốc chỉ rõ một bên là người bản xứ làm lụng cực nhọc để nuôi ngân quỹ, một bên là thực dân hưởng trọn tài nguyên béo bở.',
+      },
+      {
+        id: 'b',
+        text: 'Thực dân Pháp thi hành chính sách cai trị tại Đông Dương nhằm mục đích nhân văn là "khai hoá văn minh" và nâng cao dân trí cho nhân dân bản địa.',
+        isCorrect: false,
+        explanation: 'Sai. Luận điệu "khai hóa văn minh" chỉ là bức bình phong xảo quyệt che giấu bản chất vơ vét, bóc lột và thi hành chính sách ngu dân để dễ bề cai trị.',
+        trapKeywords: ['mục đích nhân văn', 'khai hoá văn minh'],
+      },
+      {
+        id: 'c',
+        text: 'Thực dân phương Tây độc quyền chiếm đoạt toàn bộ ngành xuất nhập khẩu và nguồn tài nguyên khoáng sản, nông nghiệp của các nước Đông Nam Á.',
+        isCorrect: true,
+        explanation: 'Đúng. Tư bản thực dân độc chiếm thị trường và bòn rút triệt để nguồn lợi xuất khẩu (lúa gạo, cao su, than đá...).',
+      },
+      {
+        id: 'd',
+        text: 'Tác phẩm Bản án chế độ thực dân Pháp ra đời năm 1925 đã góp phần thức tỉnh tinh thần yêu nước và truyền bá tư tưởng cách mạng giải phóng dân tộc.',
+        isCorrect: true,
+        explanation: 'Đúng. Tác phẩm được bí mật chuyển về nước năm 1925, có sức lay động to lớn đối với phong trào yêu nước và cách mạng Việt Nam.',
+      },
+    ],
+    thayDungAnalysis:
+      'Thầy Dũng phân tích: Lời văn của Bác Hồ trong "Bản án chế độ thực dân Pháp" đanh thép, vạch trần bản chất áp bức bóc lột của thực dân. Ý b là câu bẫy quen thuộc, các em tuyệt đối không nhầm lẫn!',
+  },
+  {
+    id: 'tf-11',
+    topicId: 'chu-de-4',
+    lessonName: 'Bài 7: Khái quát chiến tranh bảo vệ Tổ quốc',
+    title: 'Tư liệu Trần Quốc Tuấn và Hồ Nguyên Trừng về bài học lòng dân',
+    passage: `“Tư liệu 1: Trần Quốc Tuấn đã tổng kết nguyên nhân thắng lợi của cuộc kháng chiến chống quân Nguyên: ‘Vì vua tôi đồng tâm, anh em hoà mục, cả nước nhà góp sức, giặc phải bị bắt... Khoan thư sức dân để làm kế sâu rễ bền gốc, đó là thượng sách giữ nước’.\nTư liệu 2: Khi họp bàn về kế sách chống giặc Minh xâm lược (năm 1405), Tả tướng quốc Hồ Nguyên Trừng đã tâu với vua Hồ Hán Thương: ‘Thần không sợ đánh, chỉ sợ lòng dân không theo mà thôi’.”`,
+    source: 'Đại Việt sử ký toàn thư, trích trong Sách bài tập Lịch sử 11 (tr. 40, đáp án tr. 83)',
+    statements: [
+      {
+        id: 'a',
+        text: 'Cả Trần Quốc Tuấn và Hồ Nguyên Trừng đều nhận định sự đồng lòng của nhân dân (lòng dân) là nhân tố quyết định sống còn đến sự thành bại của chiến tranh bảo vệ Tổ quốc.',
+        isCorrect: true,
+        explanation: 'Đúng. Cả hai danh tướng kiệt xuất đều đúc kết: Có được lòng dân thì thắng, mất lòng dân thì ắt thất bại.',
+      },
+      {
+        id: 'b',
+        text: 'Nhà Hồ nhanh chóng thất bại trước quân xâm lược Minh năm 1407 vì không quy tụ được sức mạnh của toàn dân do các chính sách cải cách nóng vội.',
+        isCorrect: true,
+        explanation: 'Đúng. Thực tế lịch sử đã chứng minh đúng như nỗi lo của Hồ Nguyên Trừng: vì mất lòng dân nên thành lũy kiên cố của nhà Hồ cũng bị tan vỡ.',
+      },
+      {
+        id: 'c',
+        text: 'Trần Quốc Tuấn cho rằng thượng sách giữ nước muôn đời là phải xây dựng thật nhiều thành lũy kiên cố và dựa vào địa hình hiểm trở.',
+        isCorrect: false,
+        explanation: 'Sai. Trần Quốc Tuấn khẳng định thượng sách giữ nước là "Khoan thư sức dân để làm kế sâu rễ bền gốc", tức là chăm lo bồi dưỡng sức dân chứ không phải dựa vào thành quách.',
+        trapKeywords: ['xây thật nhiều thành lũy', 'dựa vào địa hình'],
+      },
+      {
+        id: 'd',
+        text: 'Bài học "lấy dân làm gốc" của cha ông ta vẫn vẹn nguyên giá trị trong sự nghiệp xây dựng nền quốc phòng toàn dân và an ninh nhân dân hôm nay.',
+        isCorrect: true,
+        explanation: 'Đúng. Đảng ta xác định: Dân là gốc, sức mạnh bảo vệ Tổ quốc là sức mạnh của thế trận lòng dân vững chắc.',
+      },
+    ],
+    thayDungAnalysis:
+      'Thầy Dũng lưu ý: So sánh giữa thời Trần (thắng lợi oanh liệt nhờ lòng dân) và thời Hồ (thất bại cay đắng vì mất lòng dân) là bài học lịch sử cực kì kinh điển trong SGK và đề thi tốt nghiệp GDPT 2018!',
+  },
+  {
+    id: 'tf-12',
+    topicId: 'chu-de-6',
+    lessonName: 'Bài 13: Việt Nam và Biển Đông',
+    title: 'Tư liệu Chủ tịch Hồ Chí Minh căn dặn về bảo vệ chủ quyền Biển Đông',
+    passage: `“Chủ tịch Hồ Chí Minh đã căn dặn đồng bào và chiến sĩ cả nước: ‘Đồng bằng là nhà, mà biển là cửa. Giữ nhà mà không giữ cửa có được không?... Nếu mình không lo bảo vệ bờ biển, thì đánh cá, làm muối cũng không yên... Đồng bào miền biển là người canh cửa cho Tổ quốc’.”`,
+    source: 'Hồ Chí Minh: Toàn tập, trích trong Sách bài tập Lịch sử 11, NXB Giáo dục Việt Nam (tr. 63 & tr. 92)',
+    statements: [
+      {
+        id: 'a',
+        text: 'Chủ tịch Hồ Chí Minh dùng hình tượng mộc mạc, gần gũi "biển là cửa" để khẳng định vai trò trọng yếu của biển đối với sự nghiệp an nguy quốc gia.',
+        isCorrect: true,
+        explanation: 'Đúng. Bác ví biển như cửa ngõ của ngôi nhà đất nước: phải giữ được cửa thì trong nhà mới bình yên phát triển.',
+      },
+      {
+        id: 'b',
+        text: 'Bảo vệ chủ quyền bờ biển và biển đảo là tiền đề tiên quyết để nhân dân an tâm phát triển các ngành kinh tế biển như đánh bắt, nuôi trồng, làm muối, khai thác dầu khí.',
+        isCorrect: true,
+        explanation: 'Đúng. Bác chỉ rõ: "Nếu mình không lo bảo vệ bờ biển, thì đánh cá, làm muối cũng không yên...".',
+      },
+      {
+        id: 'c',
+        text: 'Theo lời dạy của Bác, nhiệm vụ bảo vệ biển đảo chỉ thuộc về lực lượng Hải quân nhân dân, quần chúng nhân dân không có trách nhiệm.',
+        isCorrect: false,
+        explanation: 'Sai. Bác khẳng định "Đồng bào miền biển là người canh cửa cho Tổ quốc", toàn thể nhân dân đều có trách nhiệm và nghĩa vụ bảo vệ chủ quyền biển đảo thiêng liêng.',
+        trapKeywords: ['chỉ thuộc về', 'không có trách nhiệm'],
+      },
+      {
+        id: 'd',
+        text: 'Việt Nam chủ trương phát triển bền vững kinh tế biển gắn chặt với bảo vệ vững chắc chủ quyền biển đảo theo đúng Công ước Luật Biển UNCLOS 1982 và Luật Biển Việt Nam 2012.',
+        isCorrect: true,
+        explanation: 'Đúng. Đây là chủ trương chiến lược nhất quán của Đảng và Nhà nước ta trong Chiến lược phát triển bền vững kinh tế biển Việt Nam.',
+      },
+    ],
+    thayDungAnalysis:
+      'Thầy Dũng nhắn nhủ: Câu nói của Bác Hồ là kim chỉ nam cho tư duy chiến lược biển của dân tộc ta. Hãy nhớ rằng biển đảo là phần máu thịt thiêng liêng không thể tách rời của Tổ quốc Việt Nam!',
+  },
+
+  // Chủ đề 5: Cải cách Hồ Quý Ly
+  {
+    id: 'tf-13',
+    topicId: 'chu-de-5',
+    lessonName: 'Bài 9: Cuộc cải cách của Hồ Quý Ly và triều Hồ',
+    title: 'Tư liệu về chính sách hạn điền, hạn nô và tiền giấy của Hồ Quý Ly (1396 - 1397)',
+    passage: `“Mùa hạ, tháng 4 năm Bính Tý [1396], bắt đầu phát hành tiền giấy ‘Thông bảo hội sao’. Cứ 1 quan tiền đồng đổi lấy tiền giấy 1 quan 2 tiền... Cấm chỉ việc dùng tiền đồng, ai vi phạm sẽ bị tội biếm hoặc tử hình, tài sản sung công. Đến năm Đinh Sửu [1397], Hồ Quý Ly ban hành chính sách hạn điền: Trừ đại vương và trưởng công chúa không bị hạn chế, còn lại quan lại đến thứ dân đều chỉ được sở hữu không quá 10 mẫu ruộng tư. Số ruộng thừa phải nộp lại cho triều đình làm ruộng công. Đến năm 1401, lại ban hành chính sách hạn nô...”`,
+    source: 'Khâm định Việt sử thông giám cương mục, Chính biên, Quyển XI, NXB Giáo dục, Hà Nội, 1998',
+    statements: [
+      {
+        id: 'a',
+        text: 'Chính sách hạn điền và hạn nô của Hồ Quý Ly nhằm mục đích trực tiếp làm suy yếu thế lực kinh tế và chính trị của tầng lớp quý tộc tôn thất nhà Trần.',
+        isCorrect: true,
+        explanation: 'Đúng. Việc hạn chế ruộng tư và nô tì tư gia đã thu hẹp nền tảng kinh tế - xã hội của quý tộc Trần, tập trung quyền lực và tài nguyên về tay triều đình trung ương.',
+      },
+      {
+        id: 'b',
+        text: 'Chính sách hạn điền quy định toàn bộ mọi thành phần trong xã hội, kể cả đại vương và trưởng công chúa hoàng tộc, đều chỉ được sở hữu tối đa 10 mẫu ruộng tư.',
+        isCorrect: false,
+        explanation: 'Sai. Đoạn tư liệu nêu rõ: "Trừ đại vương và trưởng công chúa không bị hạn chế", tức vẫn có sự nhân nhượng đối với hoàng tộc chóp bu.',
+        trapKeywords: ['toàn bộ mọi thành phần', 'kể cả đại vương'],
+      },
+      {
+        id: 'c',
+        text: 'Tiền giấy Thông bảo hội sao (1396) là đồng tiền giấy đầu tiên trong lịch sử tiền tệ Việt Nam, thể hiện tư duy cải cách tài chính táo bạo, tiến bộ của Hồ Quý Ly.',
+        isCorrect: true,
+        explanation: 'Đúng. Đây là dấu mốc sáng tạo đột phá trong lịch sử tiền tệ nước ta, đi trước nhiều nước phương Tây hàng thế kỉ.',
+      },
+      {
+        id: 'd',
+        text: 'Chính sách tiền giấy của Hồ Quý Ly đã thành công rực rỡ và được nhân dân khắp nơi nhiệt liệt hưởng ứng do kỹ thuật in ấn tinh xảo chống làm giả hoàn hảo.',
+        isCorrect: false,
+        explanation: 'Sai. Tiền giấy dễ làm giả, nhân dân chưa quen dùng và bị triều đình cưỡng chế khắt khe nên gây xáo trộn kinh tế và không được lòng dân.',
+        trapKeywords: ['thành công rực rỡ', 'chống làm giả hoàn hảo'],
+      },
+    ],
+    trapAlert: 'Lưu ý ngoại lệ của chính sách hạn điền: Đại vương và trưởng công chúa KHÔNG bị hạn chế.',
+    thayDungAnalysis:
+      'Thầy Dũng lưu ý: Cải cách của Hồ Quý Ly rất tiến bộ và mang tầm nhìn chiến lược, nhưng thất bại vì cưỡng chế vội vã, chưa hợp lòng dân và chưa quy tụ được khối đại đoàn kết toàn dân tộc khi quân Minh xâm lược.',
+  },
+
+  // Chủ đề 5: Cải cách Lê Thánh Tông
+  {
+    id: 'tf-14',
+    topicId: 'chu-de-5',
+    lessonName: 'Bài 10: Cuộc cải cách của Lê Thánh Tông (thế kỉ XV)',
+    title: 'Tư liệu về lời dặn của vua Lê Thánh Tông về bảo vệ biên cương bờ cõi (1473)',
+    passage: `“Năm Quý Tỵ [1473]... Vua bảo Thái bảo Kiến Dương bá Lê Cảnh Huy rằng: ‘Một thước núi, một tấc sông của ta, lẽ nào lại tự tiện vứt bỏ được? Ngươi phải kiên quyết tranh biện, chớ cho họ lấn dần. Nếu họ không nghe, còn có thể sai sứ sang tận kinh đô của họ phân trần rõ ràng phải trái. Nếu ngươi dám đem một thước núi, một tấc đất của Thái Tổ làm mồi cho giặc, thì tội phải tru di!’.”`,
+    source: 'Đại Việt sử ký toàn thư, Tập II, Bản kỷ thực lục, NXB Khoa học Xã hội, Hà Nội, 1998, tr. 460',
+    statements: [
+      {
+        id: 'a',
+        text: 'Đoạn trích thể hiện ý chí quật cường, kiên quyết bảo vệ từng tấc đất thiêng liêng của biên cương Tổ quốc của vua Lê Thánh Tông.',
+        isCorrect: true,
+        explanation: 'Đúng. Câu nói "Một thước núi, một tấc sông của ta, lẽ nào lại tự tiện vứt bỏ được" là tuyên ngôn đanh thép về chủ quyền toàn vẹn lãnh thổ.',
+      },
+      {
+        id: 'b',
+        text: 'Vua Lê Thánh Tông chủ trương vừa mềm dẻo về biện pháp ngoại giao hòa bình ("tranh biện", "sai sứ"), vừa kiên quyết không nhượng bộ về chủ quyền lãnh thổ.',
+        isCorrect: true,
+        explanation: 'Đúng. Phương châm ngoại giao của triều Lê sơ là đấu tranh pháp lý, lý lẽ ngoại giao sáng rõ nhưng kiên quyết không để đối phương xâm lấn.',
+      },
+      {
+        id: 'c',
+        text: 'Theo lời dụ của nhà vua, việc để mất đất biên cương thời Lê sơ chỉ bị xử phạt khiển trách nhẹ và bồi thường hoa màu.',
+        isCorrect: false,
+        explanation: 'Sai. Vua tuyên bố hình phạt nghiêm khắc nhất: "thì tội phải tru di!" (xử tử cả dòng họ).',
+        trapKeywords: ['chỉ bị xử phạt khiển trách nhẹ'],
+      },
+      {
+        id: 'd',
+        text: 'Dưới thời vua Lê Thánh Tông, bộ bản đồ địa lý hành chính hoàn chỉnh đầu tiên của nước ta mang tên "Hồng Đức bản đồ" được hoàn thành vào năm 1490.',
+        isCorrect: true,
+        explanation: 'Đúng. Hồng Đức bản đồ (1490) là thành tựu địa chí vĩ đại ghi nhận chủ quyền bờ cõi 13 đạo thừa tuyên của Đại Việt.',
+      },
+    ],
+    trapAlert: 'Ghi nhớ hình phạt nghiêm khắc "tội phải tru di" nếu để mất một tấc đất non sông.',
+    thayDungAnalysis:
+      'Thầy Dũng nhắn nhủ: Lời dặn của vua Lê Thánh Tông năm 1473 đến nay vẫn vẹn nguyên giá trị thời sự đối với nhiệm vụ bảo vệ chủ quyền biên giới, biển đảo của non sông Việt Nam ta!',
+  },
+
+  // Chủ đề 3: Độc lập dân tộc ở Đông Nam Á
+  {
+    id: 'tf-15',
+    topicId: 'chu-de-3',
+    lessonName: 'Bài 6: Hành trình đi đến độc lập dân tộc ở Đông Nam Á',
+    title: 'Tư liệu về Tuyên ngôn Độc lập của In-đô-nê-xi-a (17-8-1945) và Việt Nam (2-9-1945)',
+    passage: `“Chúng tôi, nhân dân In-đô-nê-xi-a, bằng văn kiện này tuyên bố nền độc lập của In-đô-nê-xi-a. Những vấn đề liên quan đến việc chuyển giao quyền lực và các vấn đề khác sẽ được giải quyết một cách thận trọng và trong thời gian ngắn nhất. Thay mặt nhân dân In-đô-nê-xi-a: Xu-các-nô - Hát-ta.” (Tuyên ngôn Độc lập In-đô-nê-xi-a, 17-8-1945).
+Tại Việt Nam, ngày 2-9-1945, Chủ tịch Hồ Chí Minh đọc bản Tuyên ngôn Độc lập tại Quảng trường Ba Đình lịch sử: “Nước Việt Nam có quyền hưởng tự do và độc lập, và sự thật đã thành một nước tự do độc lập...”.`,
+    source: 'SGK Lịch sử 11, Bộ Kết nối tri thức với cuộc sống, NXB Giáo dục Việt Nam, tr. 40 - 42',
+    statements: [
+      {
+        id: 'a',
+        text: 'Năm 1945, nhân thời cơ phát xít Nhật đầu hàng Đồng minh, ba quốc gia Đông Nam Á đã chớp thời cơ tuyên bố độc lập là In-đô-nê-xi-a, Việt Nam và Lào.',
+        isCorrect: true,
+        explanation: 'Đúng. In-đô-nê-xi-a (17-8-1945), Việt Nam (2-9-1945) và Lào (12-10-1945) đã kịp thời chớp thời cơ ngàn năm có một để tuyên bố nền độc lập.',
+      },
+      {
+        id: 'b',
+        text: 'Hai bản Tuyên ngôn Độc lập của In-đô-nê-xi-a và Việt Nam đánh dấu sự sụp đổ hoàn toàn và vĩnh viễn của chủ nghĩa thực dân phương Tây trên toàn cõi Đông Nam Á ngay trong năm 1945.',
+        isCorrect: false,
+        explanation: 'Sai. Sau năm 1945, thực dân phương Tây (Pháp, Hà Lan, Anh...) quay trở lại xâm lược, nhân dân các nước phải tiếp tục kháng chiến trường kỳ gian khổ.',
+        trapKeywords: ['hoàn toàn và vĩnh viễn', 'ngay trong năm 1945'],
+      },
+      {
+        id: 'c',
+        text: 'Thắng lợi của Cách mạng tháng Tám năm 1945 ở Việt Nam đã lật đổ ách thống trị của phát xít Nhật, đánh đổ chế độ phong kiến ngót ngàn năm và khai sinh nước Việt Nam Dân chủ Cộng hòa.',
+        isCorrect: true,
+        explanation: 'Đúng. Cách mạng tháng Tám mang tính chất dân tộc dân chủ sâu sắc, lập nên nhà nước công nông đầu tiên ở Đông Nam Á.',
+      },
+      {
+        id: 'd',
+        text: 'Nguyên nhân khách quan quyết định hàng đầu dẫn đến thắng lợi của cách mạng giải phóng dân tộc ở Đông Nam Á năm 1945 là sự viện trợ quân sự trực tiếp của quân đội các nước Đồng minh.',
+        isCorrect: false,
+        explanation: 'Sai. Sự chuẩn bị nội lực chu đáo của nhân dân trong nước mới là nhân tố quyết định nhất; phe Đồng minh sau đó vào giải giáp quân Nhật và dung túng thực dân cũ trở lại.',
+        trapKeywords: ['quyết định hàng đầu là sự viện trợ quân sự'],
+      },
+    ],
+    trapAlert: 'Nhớ kỹ: Nhân tố chủ quan nội lực tự lực cánh sinh luôn giữ vai trò quyết định thắng lợi, thời cơ khách quan chỉ là điều kiện thuận lợi.',
+    thayDungAnalysis:
+      'Thầy Dũng lưu ý: Đề thi hay hỏi về vai trò của "Thời cơ lịch sử năm 1945". Thời cơ chỉ xuất hiện trong khoảng thời gian rất ngắn (từ khi Nhật đầu hàng 15-8 đến trước khi quân Đồng minh đổ bộ), đòi hỏi tinh thần chủ động chớp thời cơ quyết đoán!',
+  },
+
+  // Chủ đề 2: Cách mạng tháng Mười Nga 1917
+  {
+    id: 'tf-16',
+    topicId: 'chu-de-2',
+    lessonName: 'Bài 3: Sự hình thành Liên bang CHXHCN Xô viết',
+    title: 'Tư liệu về Sắc lệnh Hòa bình và Sắc lệnh Ruộng đất (10-1917)',
+    passage: `“Ngay trong đêm 25-10-1917 (theo lịch Nga, tức 7-11-1917), Đại hội Xô viết toàn Nga lần thứ hai khai mạc tại điện Xmôn-nuy đã tuyên bố thành lập Chính quyền Xô viết do V.I.Lê-nin đứng đầu. Đại hội đã long trọng thông qua hai văn kiện lịch sử bất hủ:
+- Sắc lệnh Hòa bình: Lên án cuộc chiến tranh đế quốc chủ nghĩa là một tội ác lớn nhất đối với nhân loại và đề nghị các nước tham chiến tiến hành đàm phán ngay để ký kết hòa bình dân chủ, không thôn tính đất đai, không bồi thường chiến phí.
+- Sắc lệnh Ruộng đất: Tuyên bố thủ tiêu không bồi thường quyền sở hữu ruộng đất của giai cấp địa chủ, quốc hữu hóa toàn bộ đất đai và trao lại cho nông dân nghèo cày cấy...”`,
+    source: 'SGK Lịch sử 11, Bộ Kết nối tri thức với cuộc sống, NXB Giáo dục Việt Nam, tr. 18 - 20',
+    statements: [
+      {
+        id: 'a',
+        text: 'Đại hội Xô viết toàn Nga lần thứ hai đã giải quyết trực tiếp và kịp thời hai nguyện vọng bức thiết sống còn nhất của quần chúng nhân dân Nga lúc bấy giờ là Hòa bình và Ruộng đất.',
+        isCorrect: true,
+        explanation: 'Đúng. Nhân dân Nga kiệt quệ vì chiến tranh và đói khổ, hai sắc lệnh đã đáp ứng đúng khát vọng cháy bỏng của nhân dân.',
+      },
+      {
+        id: 'b',
+        text: 'Sắc lệnh Ruộng đất đã chia toàn bộ ruộng đất địa chủ cho nông dân sở hữu tư nhân vĩnh viễn và cho phép tự do mua bán, cầm cố đất đai.',
+        isCorrect: false,
+        explanation: 'Sai. Sắc lệnh tuyên bố "quốc hữu hóa toàn bộ đất đai" (thuộc sở hữu toàn dân do nhà nước Xô viết quản lý), trao quyền sử dụng cho nông dân cày cấy, cấm mua bán cầm cố.',
+        trapKeywords: ['sở hữu tư nhân vĩnh viễn', 'tự do mua bán, cầm cố'],
+      },
+      {
+        id: 'c',
+        text: 'Cách mạng tháng Mười Nga năm 1917 là cuộc cách mạng xã hội chủ nghĩa đầu tiên trên thế giới giành thắng lợi, mở ra một thời đại mới trong lịch sử nhân loại.',
+        isCorrect: true,
+        explanation: 'Đúng. Cách mạng đã đưa giai cấp công nhân và nhân dân lao động lên nắm quyền, mở đầu thời kỳ quá độ lên chủ nghĩa xã hội trên phạm vi toàn cầu.',
+      },
+      {
+        id: 'd',
+        text: 'Sau Đại hội Xô viết toàn Nga lần thứ hai, nước Nga Xô viết tiếp tục liên minh bền chặt với các nước đế quốc phương Tây để chia sẻ thuộc địa ở châu Âu.',
+        isCorrect: false,
+        explanation: 'Sai. Nước Nga Xô viết kiên quyết rút khỏi cuộc Chiến tranh thế giới thứ nhất và sau đó bị 14 nước đế quốc liên minh tấn công vũ trang can thiệp hòng bóp chết chính quyền Xô viết non trẻ.',
+        trapKeywords: ['tiếp tục liên minh bền chặt', 'chia sẻ thuộc địa'],
+      },
+    ],
+    trapAlert: 'Phân biệt "quốc hữu hóa ruộng đất" (thuộc sở hữu toàn dân do Nhà nước quản lý) với "tư hữu hóa ruộng đất".',
+    thayDungAnalysis:
+      'Thầy Dũng nhắn nhủ: Cách mạng tháng Mười Nga giải quyết trọn vẹn cả hai nhiệm vụ hòa bình và ruộng đất, tạo niềm tin và nguồn cổ vũ vĩ đại cho phong trào giải phóng dân tộc thuộc địa, trong đó có Nguyễn Ái Quốc và cách mạng Việt Nam!',
+  },
 ];
 
 export const ESSAY_QUESTIONS: EssayQuestion[] = [
@@ -910,4 +1505,110 @@ Trong suốt chiều dài hàng ngàn năm dựng nước và giữ nước, dâ
       { criterion: 'Hành văn chặt chẽ, truyền cảm hứng và sáng tạo', maxScore: 1.0 },
     ],
   },
+  // Các câu tự luận từ Sách Bài tập Lịch sử 11 Kết nối tri thức với cuộc sống (NXBGDVN)
+  {
+    id: 'essay-6',
+    topicId: 'chu-de-1',
+    lessonName: 'Bài 2: Sự xác lập và phát triển của chủ nghĩa tư bản',
+    title: 'Phân tích tiềm năng và thách thức của chủ nghĩa tư bản hiện đại (Sách bài tập tr. 10 & tr. 75-76)',
+    question:
+      'Dựa trên kiến thức đã học trong SGK và Sách bài tập Lịch sử 11, em hãy:\n1. Phân tích tiềm năng và những thành tựu nổi bật của chủ nghĩa tư bản hiện đại trong nền kinh tế thế giới.\n2. Làm rõ những thách thức nan giải mà chủ nghĩa tư bản hiện đại đang phải đối mặt.\n3. Lấy ví dụ thực tiễn sinh động để chứng minh cho quan điểm của em.',
+    guidance: [
+      'Tiềm năng: Lực lượng sản xuất phát triển vượt bậc gắn với CMCN 4.0; trung tâm kinh tế, tài chính, KHCN hàng đầu (các nước G7); kinh nghiệm quản trị và năng lực tự điều chỉnh.',
+      'Thách thức: Khủng hoảng kinh tế, tài chính mang tính toàn cầu; bất bình đẳng xã hội sâu sắc, khoảng cách giàu nghèo ngày càng gia tăng; cạn kiệt tài nguyên và biến đổi khí hậu.',
+      'Dẫn chứng: Khủng hoảng tài chính toàn cầu 2008, phong trào "Chiếm lấy phố Wall" (Occupy Wall Street), các tập đoàn công nghệ đa quốc gia (Apple, Microsoft, Google).',
+    ],
+    modelAnswer: `1. Tiềm năng và thành tựu của chủ nghĩa tư bản hiện đại:
+- Tiềm lực kinh tế - tài chính khổng lồ: Các quốc gia tư bản phát triển (nhóm G7) vẫn là trung tâm tài chính, thương mại và đổi mới sáng tạo lớn nhất thế giới, chiếm tỉ trọng áp đảo trong quy mô kinh tế toàn cầu.
+- Tiên phong trong Cách mạng công nghiệp lần thứ tư: CNTB hiện đại có ưu thế tuyệt đối về hạ tầng công nghệ số, trí tuệ nhân tạo (AI), điện toán đám mây, công nghệ sinh học và vật liệu mới. Các tập đoàn đa quốc gia có sức cạnh tranh toàn cầu mạnh mẽ.
+- Năng lực quản trị và tự điều chỉnh linh hoạt: Nhà nước tư sản tăng cường vai trò điều tiết vĩ mô, can thiệp vào thị trường để khắc phục các cú sốc kinh tế và duy trì trật tự xã hội.
+
+2. Những thách thức nan giải không thể khắc phục:
+- Khủng hoảng kinh tế chu kỳ: CNTB không thể loại bỏ được mâu thuẫn đối kháng giữa tính chất xã hội hóa sản xuất với chế độ chiếm hữu tư nhân TBCN. Điển hình là cuộc khủng hoảng tài chính toàn cầu năm 2008 khởi phát từ thị trường nhà đất Mỹ gây suy thoái nghiêm trọng trên toàn thế giới.
+- Bất bình đẳng và phân hóa giàu nghèo sâu sắc: Sự tích tụ tư bản tạo nên sự chênh lệch giàu nghèo cực đoan. Phong trào "Chiếm lấy phố Uôn" (Occupy Wall Street) năm 2011 gióng lên hồi chuông cảnh báo với khẩu hiệu: "Chúng tôi là 99% đối đầu với 1% tài phiệt độc quyền".
+- Vấn đề an sinh xã hội và khủng hoảng sinh thái toàn cầu: Chạy theo lợi nhuận tối đa dẫn tới tàn phá môi trường sống, ô nhiễm khí hậu và cạn kiệt tài nguyên thiên nhiên (phong trào biểu tình "Rebel for Life" lan rộng khắp châu Âu).
+
+3. Đánh giá và kết luận:
+Chủ nghĩa tư bản hiện đại tuy có sức sống và khả năng tự thích nghi nhất định, nhưng do bản chất tư hữu và bóc lột, nó không phải là tương lai vĩnh cửu của nhân loại. Con đường đi lên Chủ nghĩa xã hội mà Việt Nam đã chọn là sự lựa chọn lịch sử đúng đắn, hướng tới sự phát triển bền vững vì con người.`,
+    rubricCriteria: [
+      { criterion: 'Phân tích đầy đủ 3 tiềm năng cốt lõi (kinh tế, KHCN 4.0, tự điều chỉnh)', maxScore: 3.5 },
+      { criterion: 'Làm rõ 3 thách thức lớn (khủng hoảng chu kỳ, bất bình đẳng 99% vs 1%, môi trường)', maxScore: 3.5 },
+      { criterion: 'Dẫn chứng thực tiễn thuyết phục (khủng hoảng 2008, Occupy Wall Street, G7)', maxScore: 2.0 },
+      { criterion: 'Rút ra kết luận khoa học và lập luận chặt chẽ', maxScore: 1.0 },
+    ],
+  },
+  {
+    id: 'essay-7',
+    topicId: 'chu-de-2',
+    lessonName: 'Bài 4: Sự phát triển của CNXH từ sau CTTG 2 đến nay',
+    title: 'Nguyên nhân sụp đổ của CNXH ở Liên Xô và bài học đắt giá cho Việt Nam (Sách bài tập tr. 17 & tr. 79-80)',
+    question:
+      'Dựa trên kiến thức lịch sử và đoạn tư liệu trong Văn kiện Đảng Cộng sản Việt Nam, em hãy:\n1. Phân tích các nguyên nhân dẫn đến sự khủng hoảng và tan rã của chế độ XHCN ở Liên Xô và Đông Âu.\n2. Trong các nguyên nhân đó, nguyên nhân nào giữ vai trò quyết định nhất? Vì sao?\n3. Từ sự sụp đổ đó, Đảng ta đã rút ra những bài học kinh nghiệm sâu sắc gì cho công cuộc xây dựng chủ nghĩa xã hội ở Việt Nam hiện nay?',
+    guidance: [
+      'Nguyên nhân: Đường lối chủ quan duy ý chí, mô hình tập trung quan liêu bao cấp; chậm áp dụng thành tựu KHCN; sai lầm nghiêm trọng trong cải tổ (từ bỏ nguyên tắc lãnh đạo của Đảng); sự chống phá của chủ nghĩa đế quốc.',
+      'Nguyên nhân quyết định: Yếu tố chủ quan nội tại (đường lối lãnh đạo của Đảng Cộng sản Liên Xô phạm sai lầm, mất niềm tin của nhân dân).',
+      'Bài học cho Việt Nam: Kiên định mục tiêu độc lập dân tộc và CNXH; kiên định chủ nghĩa Mác - Lênin và tư tưởng Hồ Chí Minh; giữ vững vai trò lãnh đạo duy nhất của Đảng; đổi mới kinh tế phải đi đôi với ổn định chính trị; phát huy dân chủ thực sự và dựa vào nhân dân.',
+    ],
+    modelAnswer: `1. Phân tích nguyên nhân sụp đổ của CNXH ở Liên Xô và Đông Âu:
+- Do đường lối lãnh đạo của Đảng Cộng sản Liên Xô mang tính chủ quan, duy ý chí; duy trì quá lâu cơ chế tập trung quan liêu bao cấp; chậm đổi mới mô hình quản lý kinh tế.
+- Chậm trễ trong việc áp dụng những thành tựu của cuộc cách mạng khoa học - công nghệ hiện đại vào sản xuất, dẫn tới năng suất lao động giảm sút, kinh tế trì trệ kéo dài, đời sống nhân dân không được cải thiện.
+- Khi tiến hành cải tổ (năm 1985), nhà lãnh đạo Liên Xô đã mắc phải những sai lầm nghiêm trọng về đường lối chính trị: thực hiện "công khai", đa nguyên chính trị, từ bỏ nguyên tắc tập trung dân chủ, dẫn tới xóa bỏ vai trò lãnh đạo của Đảng và hỗn loạn xã hội.
+- Sự chống phá quyết liệt và tinh vi của các thế lực thù địch phương Tây thông qua chiến lược "diễn biến hòa bình".
+
+2. Nguyên nhân quyết định nhất:
+- Nguyên nhân chủ quan nội tại: Đường lối lãnh đạo của Đảng Cộng sản Liên Xô và sự suy thoái tư tưởng chính trị, đạo đức của một bộ phận cán bộ lãnh đạo.
+- Bởi vì: Yếu tố bên trong luôn có ý nghĩa quyết định; sự chống phá bên ngoài chỉ có thể phát huy tác dụng khi nội bộ bên trong đã tự suy yếu, chệch hướng và đánh mất niềm tin của quần chúng nhân dân.
+
+3. Những bài học kinh nghiệm sâu sắc cho công cuộc xây dựng CNXH ở Việt Nam hiện nay:
+- Kiên định mục tiêu Độc lập dân tộc gắn liền với Chủ nghĩa xã hội trên nền tảng chủ nghĩa Mác - Lênin và tư tưởng Hồ Chí Minh.
+- Giữ vững và tăng cường vai trò lãnh đạo tuyệt đối, toàn diện của Đảng Cộng sản Việt Nam; thường xuyên xây dựng, chỉnh đốn Đảng trong sạch, vững mạnh, kiên quyết đẩy lùi tham nhũng, lãng phí và suy thoái tư tưởng.
+- Đổi mới toàn diện nhưng có nguyên tắc: Lấy đổi mới kinh tế làm trọng tâm, từng bước đổi mới hệ thống chính trị vững chắc, không nóng vội, duy trì môi trường chính trị - xã hội ổn định để phát triển.
+- Phát huy sức mạnh khối đại đoàn kết toàn dân tộc, thực hiện phương châm "Dân biết, dân bàn, dân làm, dân kiểm tra, dân giám sát, dân thụ hưởng", lấy hạnh phúc và ấm no của nhân dân làm mục tiêu cao nhất.`,
+    rubricCriteria: [
+      { criterion: 'Phân tích đầy đủ 4 nhóm nguyên nhân sụp đổ theo chuẩn SGK/SBT', maxScore: 3.5 },
+      { criterion: 'Lý giải thuyết phục nguyên nhân quyết định nhất (yếu tố nội tại)', maxScore: 2.5 },
+      { criterion: 'Đúc kết 4 bài học lớn sâu sắc, liên hệ chặt chẽ với thực tiễn đổi mới của Việt Nam', maxScore: 3.0 },
+      { criterion: 'Lập luận logic, sử dụng chuẩn thuật ngữ lý luận chính trị và lịch sử', maxScore: 1.0 },
+    ],
+  },
+  {
+    id: 'essay-8',
+    topicId: 'chu-de-6',
+    lessonName: 'Bài 13: Việt Nam và Biển Đông',
+    title: 'Lời dạy của Bác Hồ: "Đồng bằng là nhà, mà biển là cửa..." và trách nhiệm bảo vệ chủ quyền biển đảo (Sách bài tập tr. 63 & tr. 92)',
+    question:
+      'Chủ tịch Hồ Chí Minh đã từng căn dặn: "Đồng bằng là nhà, mà biển là cửa. Giữ nhà mà không giữ cửa có được không?... Nếu mình không lo bảo vệ bờ biển, thì đánh cá, làm muối cũng không yên... Đồng bào miền biển là người canh cửa cho Tổ quốc".\n\nTừ lời dạy thiêng liêng trên, em hãy:\n1. Phân tích tầm quan trọng chiến lược của Biển Đông đối với sự nghiệp xây dựng và bảo vệ Tổ quốc Việt Nam.\n2. Nêu các chứng cứ lịch sử và cơ sở pháp lý khẳng định chủ quyền của Việt Nam đối với quần đảo Hoàng Sa và Trường Sa.\n3. Là thế hệ trẻ tương lai của đất nước, em cần làm gì để góp phần bảo vệ vững chắc chủ quyền biển đảo thiêng liêng của Tổ quốc?',
+    guidance: [
+      'Ý nghĩa lời dạy: Biển là cửa ngõ quốc phòng hiểm yếu; bảo vệ biển là bảo vệ kinh tế và cuộc sống bình yên của muôn dân.',
+      'Chứng cứ lịch sử: Đội Hoàng Sa, Bắc Hải thời chúa Nguyễn; cắm mốc thời Gia Long; bản đồ Đại Nam nhất thống toàn đồ thời Minh Mạng; Tuyên ngôn tại Hội nghị San Francisco 1951.',
+      'Cơ sở pháp lý: UNCLOS 1982, Tuyên bố DOC 2002, Luật Biển Việt Nam 2012.',
+      'Trách nhiệm thế hệ trẻ: Học tập nâng cao tri thức, hiểu biết pháp luật biển, lan tỏa thông điệp hòa bình, sẵn sàng cống hiến cho sự nghiệp bảo vệ chủ quyền biên cương hải đảo.',
+    ],
+    modelAnswer: `1. Phân tích tầm quan trọng chiến lược của Biển Đông theo lời dạy của Bác Hồ:
+- Tuyến phòng thủ tiền tiêu hiểm yếu: Bác dùng hình tượng "biển là cửa" để nhắc nhở bờ biển dài trên 3.260 km chính là cửa ngõ tự nhiên bảo vệ toàn bộ không gian sinh tồn của đất liền. Mất cửa ngõ trên biển thì an ninh đất liền bị đe dọa trực tiếp.
+- Không gian phát triển kinh tế biển bền vững: Biển Đông đem lại nguồn lợi hải sản khổng lồ, tài nguyên dầu khí thềm lục địa phong phú, tiềm năng cảng biển nước sâu và du lịch biển đẳng cấp quốc tế. Bảo vệ biển là bảo vệ miếng cơm manh áo của ngư dân và sự hưng thịnh của nền kinh tế đất nước.
+- Cửa ngõ kết nối giao thương quốc tế: Nằm trên ngã tư đường hàng hải huyết mạch của nhân loại, Biển Đông là cầu nối giúp Việt Nam hội nhập kinh tế sâu rộng với thế giới.
+
+2. Chứng cứ lịch sử và cơ sở pháp lý khẳng định chủ quyền của Việt Nam:
+- Chứng cứ lịch sử xác thực, liên tục:
+  + Từ thế kỉ XVII, các chúa Nguyễn đã thành lập Đội Hoàng Sa và Đội Bắc Hải kiêm quản ra khai thác và xác lập chủ quyền.
+  + Thời nhà Nguyễn: Vua Gia Long chính thức sai thủy quân ra cắm mốc chủ quyền (1816); vua Minh Mạng cho vẽ bản đồ, đo đạc hải trình, dựng bia chủ quyền, trồng cây và xây dựng miếu thờ (được ghi chép trong Đại Nam thực lục, Châu bản, Mộc bản triều Nguyễn).
+  + Bản đồ "Đại Nam nhất thống toàn đồ" (1838) thể hiện rõ Hoàng Sa, Vạn lý Trường Sa nằm trong lãnh thổ Đại Nam.
+  + Năm 1951, tại Hội nghị San Francisco với 51 quốc gia tham dự, phái đoàn Việt Nam đã chính thức tuyên bố chủ quyền đối với Hoàng Sa và Trường Sa mà không có quốc gia nào phản đối.
+- Cơ sở pháp lý quốc tế vững chắc:
+  + Công ước Liên Hợp Quốc về Luật Biển năm 1982 (UNCLOS 1982) khẳng định chủ quyền, quyền chủ quyền và quyền tài phán của Việt Nam trên các vùng biển và thềm lục địa.
+  + Luật Biển Việt Nam năm 2012 khẳng định chủ quyền không thể chối cãi của Việt Nam đối với hai quần đảo Hoàng Sa và Trường Sa.
+
+3. Trách nhiệm của thế hệ trẻ hôm nay:
+- Không ngừng nỗ lực học tập, rèn luyện phẩm chất đạo đức, trang bị tri thức khoa học hiện đại và ngoại ngữ để xây dựng đất nước ngày càng giàu mạnh.
+- Nắm vững kiến thức lịch sử và pháp lý về biển đảo; tích cực tuyên truyền các chứng cứ chủ quyền chính nghĩa của Việt Nam tới bạn bè quốc tế.
+- Tỉnh táo, kiên quyết đấu tranh phản bác các luận điệu xuyên tạc, kích động của các thế lực thù địch trên không gian mạng; sẵn sàng đóng góp sức trẻ cho sự nghiệp bảo vệ chủ quyền biển đảo thiêng liêng của Tổ quốc.`,
+    rubricCriteria: [
+      { criterion: 'Phân tích sâu sắc lời dạy của Bác và tầm quan trọng quốc phòng - kinh tế của Biển Đông', maxScore: 3.5 },
+      { criterion: 'Trình bày chính xác, đầy đủ chứng cứ lịch sử và cơ sở pháp lý (UNCLOS 1982, Luật Biển 2012)', maxScore: 3.5 },
+      { criterion: 'Liên hệ hành động thiết thực, trách nhiệm công dân trẻ của học sinh', maxScore: 2.0 },
+      { criterion: 'Hành văn truyền cảm, bố cục rõ ràng, giàu tính thuyết phục', maxScore: 1.0 },
+    ],
+  },
 ];
+
