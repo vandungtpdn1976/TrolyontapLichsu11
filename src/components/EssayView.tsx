@@ -43,8 +43,20 @@ export const EssayView: React.FC<EssayViewProps> = ({ questions, onAskTeacher })
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Lỗi khi chấm bài');
+        let errorMsg = 'Lỗi khi chấm bài';
+        try {
+          const errorData = await response.json();
+          errorMsg = errorData.error || errorMsg;
+        } catch {
+          const rawText = await response.text();
+          if (rawText.includes('A server error') || rawText.includes('FUNCTION_INVOCATION')) {
+            errorMsg =
+              'Máy chủ Vercel đang xử lý hoặc chưa cấu hình biến môi trường GEMINI_API_KEY. Vui lòng kiểm tra lại cài đặt Vercel.';
+          } else {
+            errorMsg = rawText || `Lỗi máy chủ (${response.status})`;
+          }
+        }
+        throw new Error(errorMsg);
       }
 
       const result: EssayGradingResult = await response.json();
