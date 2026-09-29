@@ -4,7 +4,7 @@ import {
   generateContentWithRetryAndFallback,
   setCorsHeaders,
   parseRequestBody,
-} from './_gemini';
+} from './_gemini.ts';
 
 export default async function handler(req: any, res: any) {
   setCorsHeaders(res);
