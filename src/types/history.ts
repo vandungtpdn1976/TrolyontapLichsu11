@@ -188,16 +188,3 @@ export interface MasteryReport {
   reviewNeeded: string[];
   notMastered: string[];
 }
-
-export interface OfficialExam {
-  id: string;
-  code: string;
-  title: string;
-  durationMinutes: number;
-  scope: string;
-  source: string;
-  description: string;
-  multipleChoiceQuestions: MultipleChoiceQuestion[];
-  essayQuestions: EssayQuestion[];
-}
-

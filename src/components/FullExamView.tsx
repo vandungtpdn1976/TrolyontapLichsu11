@@ -6,7 +6,6 @@ import {
   EssayGradingResult,
   ExamMode,
 } from '../types/history';
-import { OFFICIAL_WORKBOOK_EXAMS } from '../data/officialWorkbookExams';
 import {
   Clock,
   CheckCircle2,
@@ -26,7 +25,6 @@ import {
   BarChart3,
   ChevronRight,
   TrendingUp,
-  FileText,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -37,29 +35,17 @@ interface FullExamViewProps {
   onAskTeacher: (context: string) => void;
 }
 
-export type ExtendedExamMode = '15min' | '45min' | '50min' | 'officialWorkbook';
-
 export const FullExamView: React.FC<FullExamViewProps> = ({
   multipleChoiceQuestions,
   trueFalseQuestions,
   essayQuestions,
   onAskTeacher,
 }) => {
-  // Modes: 'officialWorkbook' | '15min' | '45min' | '50min'
-  const [selectedMode, setSelectedMode] = useState<ExtendedExamMode>('officialWorkbook');
-  const [selectedOfficialExamId, setSelectedOfficialExamId] = useState<string>('de-minh-hoa-1');
-  const [examCategoryTab, setExamCategoryTab] = useState<'workbook' | 'custom'>('workbook');
+  // 3 Exam Modes as requested by user: '15min' | '45min' | '50min'
+  const [selectedMode, setSelectedMode] = useState<'15min' | '45min' | '50min'>('45min');
   
   // Optional scope filter for 45-min exam: 'all' or 'hocki1' (Semester 1)
   const [scope45Min, setScope45Min] = useState<'all' | 'hocki1'>('all');
-
-  // Active official exam object
-  const activeOfficialExam = useMemo(() => {
-    return (
-      OFFICIAL_WORKBOOK_EXAMS.find((e) => e.id === selectedOfficialExamId) ||
-      OFFICIAL_WORKBOOK_EXAMS[0]
-    );
-  }, [selectedOfficialExamId]);
 
   // Semester 1 topics helper
   const sem1Topics = ['chu-de-1', 'chu-de-2', 'chu-de-3', 'chu-de-4'];
@@ -78,9 +64,6 @@ export const FullExamView: React.FC<FullExamViewProps> = ({
 
   // Filter questions according to the active mode & scope
   const part1Questions = useMemo(() => {
-    if (selectedMode === 'officialWorkbook') {
-      return activeOfficialExam.multipleChoiceQuestions;
-    }
     if (selectedMode === '15min') {
       return multipleChoiceQuestions.slice(0, 6);
     }
@@ -92,12 +75,9 @@ export const FullExamView: React.FC<FullExamViewProps> = ({
     }
     // 50min: 10 MC questions
     return multipleChoiceQuestions.slice(0, 10);
-  }, [selectedMode, activeOfficialExam, scope45Min, multipleChoiceQuestions, sem1MC]);
+  }, [selectedMode, scope45Min, multipleChoiceQuestions, sem1MC]);
 
   const part2Questions = useMemo(() => {
-    if (selectedMode === 'officialWorkbook') {
-      return []; // Official workbook format: Part I: 24 Multiple Choice, Part II: Essay
-    }
     if (selectedMode === '15min') {
       return trueFalseQuestions.slice(0, 1);
     }
@@ -113,14 +93,11 @@ export const FullExamView: React.FC<FullExamViewProps> = ({
 
   const hasEssayPart = selectedMode !== '15min';
   const part3Question = useMemo(() => {
-    if (selectedMode === 'officialWorkbook') {
-      return activeOfficialExam.essayQuestions[0] || essayQuestions[0];
-    }
     if (selectedMode === '45min' && scope45Min === 'hocki1' && sem1Essay.length > 0) {
       return sem1Essay[0];
     }
     return essayQuestions[0];
-  }, [selectedMode, activeOfficialExam, scope45Min, sem1Essay, essayQuestions]);
+  }, [selectedMode, scope45Min, sem1Essay, essayQuestions]);
 
   // Exam state
   const [activePart, setActivePart] = useState<'part1' | 'part2' | 'part3'>('part1');
@@ -165,19 +142,9 @@ export const FullExamView: React.FC<FullExamViewProps> = ({
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handleStartExam = (mode: ExtendedExamMode, officialExamId?: string) => {
+  const handleStartExam = (mode: '15min' | '45min' | '50min') => {
     setSelectedMode(mode);
-    if (officialExamId) {
-      setSelectedOfficialExamId(officialExamId);
-    }
-    const duration =
-      mode === '15min'
-        ? 15 * 60
-        : mode === '50min'
-        ? 50 * 60
-        : mode === 'officialWorkbook'
-        ? 60 * 60
-        : 45 * 60;
+    const duration = mode === '15min' ? 15 * 60 : mode === '50min' ? 50 * 60 : 45 * 60;
     setTotalExamDuration(duration);
     setTimeLeft(duration);
     setHasStarted(true);
@@ -195,13 +162,7 @@ export const FullExamView: React.FC<FullExamViewProps> = ({
     setHasStarted(false);
     setTimerRunning(false);
     const duration =
-      selectedMode === '15min'
-        ? 15 * 60
-        : selectedMode === '50min'
-        ? 50 * 60
-        : selectedMode === 'officialWorkbook'
-        ? 60 * 60
-        : 45 * 60;
+      selectedMode === '15min' ? 15 * 60 : selectedMode === '50min' ? 50 * 60 : 45 * 60;
     setTimeLeft(duration);
     setIsSubmitted(false);
     setPart1Answers({});
@@ -218,19 +179,11 @@ export const FullExamView: React.FC<FullExamViewProps> = ({
   // 15min: 6 questions -> 6.0 points (1.0 pt / question)
   // 45min: 10 questions -> 4.0 points (0.4 pt / question)
   // 50min: 10 questions -> 3.0 points (0.3 pt / question)
-  // officialWorkbook: 24 questions -> 6.0 points (0.25 pt / question - Chuẩn NXBGDVN)
-  const part1MaxScore =
-    selectedMode === '15min'
-      ? 6.0
-      : selectedMode === '45min'
-      ? 4.0
-      : selectedMode === 'officialWorkbook'
-      ? 6.0
-      : 3.0;
-  const part1PointsPerQuestion = useMemo(() => {
-    if (part1Questions.length === 0) return 0;
-    return parseFloat((part1MaxScore / part1Questions.length).toFixed(2));
-  }, [part1MaxScore, part1Questions.length]);
+  const part1MaxScore = selectedMode === '15min' ? 6.0 : selectedMode === '45min' ? 4.0 : 3.0;
+  const part1PointsPerQuestion = useMemo(
+    () => parseFloat((part1MaxScore / part1Questions.length).toFixed(2)),
+    [part1MaxScore, part1Questions.length]
+  );
 
   const getPart1QuestionScore = (qId: string, correctIndex: number) => {
     const userChoice = part1Answers[qId];
@@ -322,7 +275,6 @@ export const FullExamView: React.FC<FullExamViewProps> = ({
   };
 
   const calculatePart2Score = () => {
-    if (part2Questions.length === 0) return 0;
     let score = 0;
     part2Questions.forEach((q) => {
       const qScore = getPart2QuestionScore(q);
@@ -336,8 +288,7 @@ export const FullExamView: React.FC<FullExamViewProps> = ({
   // 15min: 0 pt
   // 45min: 3.0 pt
   // 50min: 3.0 pt
-  // officialWorkbook: 4.0 pt (Chuẩn cấu trúc Đề NXBGDVN: I. Trắc nghiệm 6,0 đ; II. Tự luận 4,0 đ)
-  const part3MaxScore = selectedMode === 'officialWorkbook' ? 4.0 : hasEssayPart ? 3.0 : 0.0;
+  const part3MaxScore = hasEssayPart ? 3.0 : 0.0;
   const calculatePart3Score = () => {
     if (!hasEssayPart) return 0;
     if (!essayGrading) return 0;
@@ -371,10 +322,9 @@ export const FullExamView: React.FC<FullExamViewProps> = ({
             topicTitle: part3Question.lessonName,
           }),
         });
-        const raw = await res.text();
         if (res.ok) {
           try {
-            const data = JSON.parse(raw);
+            const data = await res.json();
             setEssayGrading(data);
           } catch (e) {
             console.error('Không thể parse kết quả tự luận:', e);
@@ -683,14 +633,7 @@ export const FullExamView: React.FC<FullExamViewProps> = ({
               <span>
                 Thời gian làm bài:{' '}
                 <strong>
-                  {selectedMode === 'officialWorkbook'
-                    ? '60'
-                    : selectedMode === '15min'
-                    ? '15'
-                    : selectedMode === '45min'
-                    ? '45'
-                    : '50'}{' '}
-                  phút
+                  {selectedMode === '15min' ? '15' : selectedMode === '45min' ? '45' : '50'} phút
                 </strong>
               </span>
             </div>
@@ -703,12 +646,8 @@ export const FullExamView: React.FC<FullExamViewProps> = ({
             <div className="flex items-center gap-1.5">
               <CheckCircle2 className="w-4 h-4 text-emerald-700" />
               <span>
-                Nguồn bài tập:{' '}
-                <strong>
-                  {selectedMode === 'officialWorkbook'
-                    ? 'Sách Bài tập Lịch sử 11 (NXBGDVN)'
-                    : 'Ngân hàng đề thi GDPT 2018'}
-                </strong>
+                Phân tích đúng sai:{' '}
+                <strong>Có ngay khi nộp bài</strong>
               </span>
             </div>
           </div>

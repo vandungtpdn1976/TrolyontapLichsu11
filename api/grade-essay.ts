@@ -23,7 +23,7 @@ export default async function handler(req: any, res: any) {
       return res.status(500).json({ error: MISSING_API_KEY_ERROR });
     }
 
-    const body = await parseRequestBody(req);
+    const body = parseRequestBody(req);
     const { question, rubric, studentAnswer, topicTitle } = body;
 
     if (!studentAnswer || studentAnswer.trim().length < 10) {
