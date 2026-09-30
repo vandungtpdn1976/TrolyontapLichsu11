@@ -12,8 +12,7 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(express.json());
 
 // Enable CORS and preflight handling for all environments (Vercel & AI Studio)
 app.use((req, res, next) => {
@@ -55,49 +54,89 @@ const MISSING_API_KEY_ERROR =
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+function safeJsonParse<T = any>(text: string, fallback: T = {} as T): T {
+  if (!text || typeof text !== 'string') return fallback;
+  const trimmed = text.trim();
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    let cleaned = trimmed.replace(/```(?:json)?/gi, '').replace(/```/g, '').trim();
+    try {
+      return JSON.parse(cleaned);
+    } catch {
+      const firstCurly = cleaned.indexOf('{');
+      const lastCurly = cleaned.lastIndexOf('}');
+      if (firstCurly !== -1 && lastCurly > firstCurly) {
+        try {
+          return JSON.parse(cleaned.substring(firstCurly, lastCurly + 1));
+        } catch {
+          // continue
+        }
+      }
+      const firstSquare = cleaned.indexOf('[');
+      const lastSquare = cleaned.lastIndexOf(']');
+      if (firstSquare !== -1 && lastSquare > firstSquare) {
+        try {
+          return JSON.parse(cleaned.substring(firstSquare, lastSquare + 1));
+        } catch {
+          // continue
+        }
+      }
+      return fallback;
+    }
+  }
+}
+
 // Helper: Tự động thử lại và dự phòng mô hình nếu gặp lỗi 503 (high demand) hoặc 429
 async function generateContentWithRetryAndFallback(params: {
   contents: any;
   config?: any;
 }) {
+  const apiKey = getGeminiApiKey();
+  if (!apiKey || !apiKey.trim()) {
+    throw new Error(MISSING_API_KEY_ERROR);
+  }
+
   const ai = getGeminiClient();
-  // Thứ tự ưu tiên các mô hình: gemini-3.8-flash -> gemini-flash-latest -> gemini-3.1-flash-lite
-  const candidateModels = ['gemini-3.8-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite'];
+  const candidateModels = ['gemini-3.8-flash', 'gemini-flash-latest'];
   let lastError: any = null;
 
   for (const model of candidateModels) {
-    for (let attempt = 1; attempt <= 2; attempt++) {
-      try {
-        const response = await ai.models.generateContent({
-          model,
-          contents: params.contents,
-          config: params.config,
-        });
-        if (response && response.text) {
-          return response;
-        }
-      } catch (err: any) {
-        lastError = err;
-        const errStr = String(err?.message || err);
-        const isTemporary =
-          errStr.includes('503') ||
-          errStr.includes('429') ||
-          errStr.includes('high demand') ||
-          errStr.includes('Resource has been exhausted') ||
-          errStr.includes('temporarily unavailable') ||
-          errStr.includes('overloaded');
+    try {
+      const response = await ai.models.generateContent({
+        model,
+        contents: params.contents,
+        config: params.config,
+      });
+      if (response && response.text) {
+        return response;
+      }
+    } catch (err: any) {
+      lastError = err;
+      const errStr = String(err?.message || err);
+      console.warn(`Mô hình ${model} gặp lỗi (${errStr.slice(0, 100)}).`);
 
-        if (isTemporary && attempt === 1) {
-          await delay(1000);
-          continue;
-        }
-        console.warn(`Mô hình ${model} đang bận (${errStr.slice(0, 80)}). Đang chuyển sang mô hình dự phòng...`);
-        break; // Chuyển sang candidateModel tiếp theo
+      if (errStr.includes('API_KEY_INVALID') || errStr.includes('API key not valid')) {
+        throw new Error(
+          'GEMINI_API_KEY không hợp lệ hoặc đã hết hạn. Bạn vui lòng tạo API key mới trên Google AI Studio rồi cập nhật vào Vercel Settings -> Environment Variables nhé!'
+        );
+      }
+
+      const isTemporary =
+        errStr.includes('503') ||
+        errStr.includes('429') ||
+        errStr.includes('high demand') ||
+        errStr.includes('Resource has been exhausted') ||
+        errStr.includes('temporarily unavailable') ||
+        errStr.includes('overloaded');
+
+      if (isTemporary) {
+        await delay(500);
       }
     }
   }
 
-  throw lastError;
+  throw lastError || new Error('Không thể kết nối đến mô hình AI.');
 }
 
 const SYSTEM_INSTRUCTION_GIA_SU_AI = `Bạn là trợ lý học tập môn Lịch sử lớp 11, giọng điệu luôn lịch sự, nhã nhặn, khiêm tốn, ân cần và chuẩn mực như giáo viên đang giảng bài cho học sinh (Thầy Dũng / Anh Dũng).
@@ -132,14 +171,7 @@ CÁC NGUYÊN TẮC BẮT BUỘC KHI TRẢ LỜI TRONG KHUNG CHAT:
 
 5. TRUNG THỰC VÀ BẢO ĐẢM TÍNH SƯ PHẠM:
 - Nếu tài liệu chưa đề cập hoặc không đủ dữ liệu để trả lời, phải nói rõ là tài liệu chưa đề cập, không đoán mò, và chỉ dẫn học sinh xem lại bài nào, trang nào trong SGK.
-- Không đưa trực tiếp đáp án để gian lận thi cử; luôn định hướng phương pháp tư duy để học sinh tự làm chủ kiến thức.
-
-6. XỬ LÝ HÌNH ẢNH DÁN HOẶC TẢI LÊN (ẢNH ĐỀ THI, TRANG SGK, BẢN ĐỒ, BÀI LÀM VIẾT TAY):
-- Khi học sinh dán ảnh hoặc gửi kèm ảnh (ảnh chụp đề kiểm tra trắc nghiệm 4 lựa chọn, câu hỏi trắc nghiệm Đúng - Sai theo format GDPT 2018, đoạn tư liệu lịch sử, sơ đồ tư duy, niên biểu, bản đồ hoặc bài viết tự luận học sinh chụp lại):
-  + Đọc và nhận diện kỹ toàn bộ văn bản, câu hỏi, các mệnh đề hoặc dữ liệu có trong hình ảnh.
-  + Trả lời cụ thể câu hỏi trong ảnh theo đúng chuẩn kiến thức SGK Lịch sử 11 GDPT 2018 (bộ Kết nối tri thức với cuộc sống).
-  + Nêu rõ đáp án đúng/sai của từng câu/ý, giải thích cặn kẽ bản chất sự kiện lịch sử, nhân vật, mốc thời gian và chỉ ra "từ khóa bẫy" nếu có.
-  + Luôn dùng giọng điệu sư phạm ân cần, khích lệ học sinh.`;
+- Không đưa trực tiếp đáp án để gian lận thi cử; luôn định hướng phương pháp tư duy để học sinh tự làm chủ kiến thức.`;
 
 // Tạo apiRouter để phục vụ đồng bộ cả khi có prefix /api hoặc không có prefix (hỗ trợ hoàn hảo Vercel Serverless Function & Express)
 const apiRouter = express.Router();
@@ -158,32 +190,7 @@ apiRouter.get('/health', (_req, res) => {
   });
 });
 
-// Helper: Phân giải ảnh dataUrl thành inlineData cho Gemini
-function formatInlineImagePart(dataUrl: string, fallbackMime = 'image/jpeg') {
-  if (!dataUrl || typeof dataUrl !== 'string') return null;
-  const match = dataUrl.match(/^data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+);base64,(.+)$/s);
-  if (match) {
-    return {
-      inlineData: {
-        mimeType: match[1],
-        data: match[2],
-      },
-    };
-  }
-  if (dataUrl.includes(',')) {
-    const [header, base64] = dataUrl.split(',');
-    const mimeMatch = header.match(/:(.*?);/);
-    return {
-      inlineData: {
-        mimeType: mimeMatch ? mimeMatch[1] : fallbackMime,
-        data: base64,
-      },
-    };
-  }
-  return null;
-}
-
-// API: Chat with Gia sư AI Thầy Dũng (Hỗ trợ đa phương thức: Văn bản & Dán hình ảnh)
+// API: Chat with Gia sư AI Thầy Dũng
 apiRouter.post('/chat', async (req, res) => {
   try {
     const { messages, context, actionType } = req.body;
@@ -198,39 +205,11 @@ apiRouter.post('/chat', async (req, res) => {
       return res.status(400).json({ error: 'Dữ liệu tin nhắn không hợp lệ.' });
     }
 
-    // Format conversation history for Gemini (Hỗ trợ cả text và ảnh đính kèm/dán từ clipboard)
-    const contents = messages.map((m: {
-      role: string;
-      content: string;
-      images?: Array<{ dataUrl: string; mimeType?: string; name?: string }>;
-    }) => {
-      const parts: any[] = [];
-
-      // Đưa ảnh vào parts nếu có
-      if (Array.isArray(m.images) && m.images.length > 0) {
-        for (const img of m.images) {
-          const imgPart = formatInlineImagePart(img.dataUrl, img.mimeType);
-          if (imgPart) {
-            parts.push(imgPart);
-          }
-        }
-      }
-
-      // Đưa văn bản vào parts
-      const text = (m.content || '').trim();
-      if (text) {
-        parts.push({ text });
-      } else if (parts.length > 0) {
-        parts.push({ text: 'Thầy hãy phân tích chi tiết hình ảnh đính kèm này và giải đáp đầy đủ cho em theo kiến thức SGK Lịch sử 11 GDPT 2018 nhé!' });
-      } else {
-        parts.push({ text: '...' });
-      }
-
-      return {
-        role: m.role === 'assistant' ? 'model' : 'user',
-        parts,
-      };
-    });
+    // Format conversation history for Gemini
+    const contents = messages.map((m: { role: string; content: string }) => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }],
+    }));
 
     let extendedInstruction = SYSTEM_INSTRUCTION_GIA_SU_AI;
     if (context) {
@@ -490,7 +469,10 @@ ${
       },
     });
 
-    const parsed = JSON.parse(response.text?.trim() || '{}');
+    const parsed = safeJsonParse(response.text || '', {});
+    if (!parsed || Object.keys(parsed).length === 0) {
+      throw new Error('Không thể phân tích kết quả bài tập từ AI. Vui lòng thử lại sau vài giây nhé!');
+    }
     return res.json(parsed);
   } catch (error: any) {
     console.error('Error in /api/generate-quiz:', error);
@@ -735,7 +717,10 @@ Trả về đúng định dạng JSON thuần túy (không bọc markdown thừa
       },
     });
 
-    const parsed = JSON.parse(response.text?.trim() || '{}');
+    const parsed = safeJsonParse(response.text || '', {});
+    if (!parsed || Object.keys(parsed).length === 0) {
+      throw new Error('Không thể phân tích nội dung ôn tập thông minh từ AI. Vui lòng thử lại nhé!');
+    }
     return res.json(parsed);
   } catch (error: any) {
     console.error('Error in /api/smart-study:', error);

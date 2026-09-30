@@ -1,27 +1,17 @@
 import { GoogleGenAI } from '@google/genai';
 
-// FIX DÒNG 3-12: Hàm này phải đồng bộ, không được dùng fetch/await ở đây
 export function getGeminiApiKey(): string {
-  // @ts-ignore
-  const viteEnv = typeof import.meta!== 'undefined'? (import.meta as any).env : {};
-
-  const key =
-    (typeof process!== 'undefined'? process.env.GEMINI_API_KEY : '') ||
-    viteEnv.VITE_GEMINI_API_KEY ||
-    viteEnv.VITE_API_KEY ||
-    (typeof process!== 'undefined'? process.env.VITE_GEMINI_API_KEY : '') ||
-    (typeof process!== 'undefined'? process.env.GOOGLE_API_KEY : '') ||
-    (typeof process!== 'undefined'? process.env.API_KEY : '') ||
-    '';
-
-  return key.trim();
+  return (
+    process.env.GEMINI_API_KEY ||
+    process.env.VITE_GEMINI_API_KEY ||
+    process.env.GOOGLE_API_KEY ||
+    process.env.API_KEY ||
+    ''
+  );
 }
 
 export function getGeminiClient(): GoogleGenAI {
   const apiKey = getGeminiApiKey();
-  if (!apiKey) {
-    throw new Error(MISSING_API_KEY_ERROR);
-  }
   return new GoogleGenAI({
     apiKey,
     httpOptions: {
@@ -55,31 +45,42 @@ export function parseRequestBody(req: any): any {
   return req.body;
 }
 
-// FIX CHÍNH DÒNG 55-95: Hết lỗi body stream already read
+export function safeJsonParse<T>(rawText: string, fallback: T): T {
+  if (!rawText || typeof rawText !== 'string') return fallback;
+  try {
+    return JSON.parse(rawText) as T;
+  } catch {
+    // Attempt markdown strip
+    const jsonMatch = rawText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+    if (jsonMatch && jsonMatch[1]) {
+      try {
+        return JSON.parse(jsonMatch[1]) as T;
+      } catch {
+        return fallback;
+      }
+    }
+    return fallback;
+  }
+}
+
 export async function generateContentWithRetryAndFallback(params: {
   contents: any;
   config?: any;
-}): Promise<string> {
+}) {
   const ai = getGeminiClient();
-  // FIX tên model - gemini-3.8-flash không tồn tại
-  const candidateModels = ['gemini-1.5-flash', 'gemini-1.5-flash-latest', 'gemini-1.5-flash-8b'];
+  const candidateModels = ['gemini-3.8-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite'];
   let lastError: any = null;
 
   for (const model of candidateModels) {
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
-        const response: any = await ai.models.generateContent({
+        const response = await ai.models.generateContent({
           model,
           contents: params.contents,
           config: params.config,
         });
-
-        // SDK @google/genai trả về text là property, không phải hàm
-        // Lấy ra STRING luôn, không return cả object
-        const text = response.text || response?.candidates?.[0]?.content?.parts?.[0]?.text;
-
-        if (text) {
-          return text as string;
+        if (response && response.text) {
+          return response;
         }
       } catch (err: any) {
         lastError = err;
@@ -90,14 +91,13 @@ export async function generateContentWithRetryAndFallback(params: {
           errStr.includes('high demand') ||
           errStr.includes('Resource has been exhausted') ||
           errStr.includes('temporarily unavailable') ||
-          errStr.includes('overloaded') ||
-          errStr.includes('body stream already read');
+          errStr.includes('overloaded');
 
         if (isTemporary && attempt === 1) {
-          await delay(1200);
+          await delay(1000);
           continue;
         }
-        console.warn(`Mô hình ${model} đang bận (${errStr.slice(0, 200)}). Chuyển sang mô hình dự phòng...`);
+        console.warn(`Mô hình ${model} đang bận (${errStr.slice(0, 80)}). Chuyển sang mô hình dự phòng...`);
         break;
       }
     }
@@ -118,9 +118,9 @@ CÁC NGUYÊN TẮC BẮT BUỘC KHI TRẢ LỜI TRONG KHUNG CHAT:
 
 2. TUYỆT ĐỐI BÁM SÁT SÁCH GIÁO KHOA VÀ TÀI LIỆU CUNG CẤP:
 - Chỉ dựa vào các nguồn tài liệu chính thức sau:
-    + Sách giáo khoa Lịch sử 11 hiện hành của Bộ Giáo dục và Đào tạo (bộ Kết nối tri thức với cuộc sống), Sách giáo viên Lịch sử 11, 3 Chuyên đề học tập Lịch sử 11.
-    + Sách Bài tập Lịch sử 11 (Bộ Kết nối tri thức với cuộc sống, Nhà xuất bản Giáo dục Việt Nam, mã số G1BHYS001H23) bao gồm đầy đủ 6 Chủ đề, 13 Bài học, 4 Đề kiểm tra minh họa học kì I và cuối năm, cùng toàn bộ Đáp án và Gợi ý trả lời chi tiết chính thức từ trang 74 đến trang 92.
-    + Toàn bộ tài liệu người dùng đã tải lên AI Studio (Đề cương ôn tập giữa kỳ I Lịch sử 11 năm học 2024 - 2025, Bộ Đề + đáp án kiểm tra Lịch sử 11, Đề cương và ma trận ôn tập cuối kỳ I, Sách bài tập Lịch sử 11).
+  + Sách giáo khoa Lịch sử 11 hiện hành của Bộ Giáo dục và Đào tạo (bộ Kết nối tri thức với cuộc sống), Sách giáo viên Lịch sử 11, 3 Chuyên đề học tập Lịch sử 11.
+  + Sách Bài tập Lịch sử 11 (Bộ Kết nối tri thức với cuộc sống, Nhà xuất bản Giáo dục Việt Nam, mã số G1BHYS001H23) bao gồm đầy đủ 6 Chủ đề, 13 Bài học, 4 Đề kiểm tra minh họa học kì I và cuối năm, cùng toàn bộ Đáp án và Gợi ý trả lời chi tiết chính thức từ trang 74 đến trang 92.
+  + Toàn bộ tài liệu người dùng đã tải lên AI Studio (Đề cương ôn tập giữa kỳ I Lịch sử 11 năm học 2024 - 2025, Bộ Đề + đáp án kiểm tra Lịch sử 11, Đề cương và ma trận ôn tập cuối kỳ I, Sách bài tập Lịch sử 11).
 - Khi tạo câu hỏi, bài tập hoặc giải đáp, PHẢI bám sát cấu trúc ngữ liệu, câu hỏi trắc nghiệm, câu hỏi Đúng - Sai, đoạn tư liệu lịch sử và thang điểm tự luận của Sách bài tập Lịch sử 11 NXB Giáo dục Việt Nam.
 - Không dùng kiến thức lan man bên ngoài các nguồn này.
 
@@ -132,8 +132,8 @@ CÁC NGUYÊN TẮC BẮT BUỘC KHI TRẢ LỜI TRONG KHUNG CHAT:
 - Nếu câu hỏi nằm ngoài chương trình hoặc ngoài nguồn tài liệu đã upload, PHẢI NÓI RÕ THẲNG THẮN VÀ LỊCH SỰ:
   "Câu hỏi này không nằm trong nguồn tài liệu được cung cấp (Sách giáo khoa Lịch sử 11 hiện hành và tài liệu ôn tập của chương trình). Em hãy xem lại bài học liên quan trong SGK Lịch sử 11 để nắm chắc kiến thức thi nhé!"
 - Nhắc nhở phạm vi trọng tâm chương trình ôn tập:
-    + Lịch sử thế giới: từ năm 1789 đến năm 1918.
-    + Lịch sử Việt Nam: từ năm 1858 đến năm 1918.
+  + Lịch sử thế giới: từ năm 1789 đến năm 1918.
+  + Lịch sử Việt Nam: từ năm 1858 đến năm 1918.
 - Nếu câu hỏi vượt ra ngoài phạm vi này, nhẹ nhàng và lịch sự từ chối và hướng dẫn các em quay lại trọng tâm bài học.
 
 5. TRUNG THỰC VÀ BẢO ĐẢM TÍNH SƯ PHẠM:
@@ -142,13 +142,13 @@ CÁC NGUYÊN TẮC BẮT BUỘC KHI TRẢ LỜI TRONG KHUNG CHAT:
 
 6. XỬ LÝ HÌNH ẢNH DÁN HOẶC TẢI LÊN (ẢNH ĐỀ THI, TRANG SGK, BẢN ĐỒ, BÀI LÀM VIẾT TAY):
 - Khi học sinh dán ảnh hoặc gửi kèm ảnh (ảnh chụp đề kiểm tra trắc nghiệm 4 lựa chọn, câu hỏi trắc nghiệm Đúng - Sai theo format GDPT 2018, đoạn tư liệu lịch sử, sơ đồ tư duy, niên biểu, bản đồ hoặc bài viết tự luận học sinh chụp lại):
-    + Đọc và nhận diện kỹ toàn bộ văn bản, câu hỏi, các mệnh đề hoặc dữ liệu có trong hình ảnh.
-    + Trả lời cụ thể câu hỏi trong ảnh theo đúng chuẩn kiến thức SGK Lịch sử 11 GDPT 2018 (bộ Kết nối tri thức với cuộc sống).
-    + Nêu rõ đáp án đúng/sai của từng câu/ý, giải thích cặn kẽ bản chất sự kiện lịch sử, nhân vật, mốc thời gian và chỉ ra "từ khóa bẫy" nếu có.
-    + Luôn dùng giọng điệu sư phạm ân cần, khích lệ học sinh.`;
+  + Đọc và nhận diện kỹ toàn bộ văn bản, câu hỏi, các mệnh đề hoặc dữ liệu có trong hình ảnh.
+  + Trả lời cụ thể câu hỏi trong ảnh theo đúng chuẩn kiến thức SGK Lịch sử 11 GDPT 2018 (bộ Kết nối tri thức với cuộc sống).
+  + Nêu rõ đáp án đúng/sai của từng câu/ý, giải thích cặn kẽ bản chất sự kiện lịch sử, nhân vật, mốc thời gian và chỉ ra "từ khóa bẫy" nếu có.
+  + Luôn dùng giọng điệu sư phạm ân cần, khích lệ học sinh.`;
 
 export function formatInlineImagePart(dataUrl: string, fallbackMime = 'image/jpeg') {
-  if (!dataUrl || typeof dataUrl!== 'string') return null;
+  if (!dataUrl || typeof dataUrl !== 'string') return null;
   const match = dataUrl.match(/^data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+);base64,(.+)$/s);
   if (match) {
     return {
@@ -163,7 +163,7 @@ export function formatInlineImagePart(dataUrl: string, fallbackMime = 'image/jpe
     const mimeMatch = header.match(/:(.*?);/);
     return {
       inlineData: {
-        mimeType: mimeMatch? mimeMatch[1] : fallbackMime,
+        mimeType: mimeMatch ? mimeMatch[1] : fallbackMime,
         data: base64,
       },
     };
