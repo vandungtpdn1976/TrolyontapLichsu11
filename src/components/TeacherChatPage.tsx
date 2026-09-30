@@ -292,8 +292,9 @@ Bây giờ, em muốn chúng mình cùng ôn bài nào, hoặc em có ảnh đ�
     setLoading(true);
 
     try {
-      // Tối ưu cuộc trò chuyện gửi đi: chỉ lấy tối đa 8 lượt gần nhất và chỉ gửi ảnh ở lượt hiện tại để dung lượng JSON luôn siêu nhẹ (<300KB)
-      const recentHistory = [...messages, userMsg].slice(-8).map((m, idx, arr) => {
+      // Tối ưu cuộc trò chuyện gửi đi: loại bỏ lời chào ban đầu và tin báo lỗi, chỉ lấy tối đa 8 lượt gần nhất và chỉ gửi ảnh ở lượt hiện tại để dung lượng JSON luôn siêu nhẹ (<300KB)
+      const validMessages = messages.filter((m) => m.id !== 'welcome-msg' && !m.id.startsWith('error-'));
+      const recentHistory = [...validMessages, userMsg].slice(-8).map((m, idx, arr) => {
         const isCurrent = idx === arr.length - 1;
         return {
           role: m.role,

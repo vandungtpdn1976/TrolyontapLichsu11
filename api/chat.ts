@@ -32,7 +32,7 @@ export default async function handler(req: any, res: any) {
       return res.status(400).json({ error: 'Dữ liệu tin nhắn không hợp lệ.' });
     }
 
-    const contents = messages.map((m: {
+    const rawContents = messages.map((m: {
       role: string;
       content: string;
       images?: Array<{ dataUrl: string; mimeType?: string; name?: string }>;
@@ -63,6 +63,30 @@ export default async function handler(req: any, res: any) {
       };
     });
 
+    // Gemini API yêu cầu lượt trò chuyện đầu tiên BẮT BUỘC phải là role 'user'
+    let geminiContents = [...rawContents];
+    while (geminiContents.length > 0 && geminiContents[0].role === 'model') {
+      geminiContents.shift();
+    }
+
+    if (geminiContents.length === 0) {
+      geminiContents.push({
+        role: 'user',
+        parts: [{ text: 'Xin chào Thầy Dũng!' }],
+      });
+    }
+
+    // Gộp các lượt liên tiếp cùng role để đảm bảo luân phiên user - model
+    const normalizedContents: any[] = [];
+    for (const turn of geminiContents) {
+      const prev = normalizedContents[normalizedContents.length - 1];
+      if (prev && prev.role === turn.role) {
+        prev.parts.push(...turn.parts);
+      } else {
+        normalizedContents.push(turn);
+      }
+    }
+
     let extendedInstruction = SYSTEM_INSTRUCTION_GIA_SU_AI;
     if (context) {
       extendedInstruction += `\n\n[Bối cảnh bài học/câu hỏi hiện tại]:\n${context}`;
@@ -72,14 +96,25 @@ export default async function handler(req: any, res: any) {
     }
 
     const response = await generateContentWithRetryAndFallback({
-      contents: contents,
+      contents: normalizedContents,
       config: {
         systemInstruction: extendedInstruction,
         temperature: 0.7,
       },
     });
 
-    typescript const reply= typeof response ==='string'? respone: 'Thầy xin lỗi, kết nối bị gián đoạn đôi chút. Em gửi lại câu hỏi nhé!';
+    let reply = '';
+    if (response) {
+      if (typeof response.text === 'string') {
+        reply = response.text;
+      } else if (typeof (response as any).text === 'function') {
+        reply = (response as any).text();
+      }
+    }
+    if (!reply) {
+      reply = 'Thầy xin lỗi, kết nối bị gián đoạn đôi chút. Em gửi lại câu hỏi nhé!';
+    }
+
     return res.status(200).json({ reply });
   } catch (error: any) {
     console.error('Error in /api/chat:', error);

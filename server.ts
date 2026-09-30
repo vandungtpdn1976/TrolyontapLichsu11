@@ -267,6 +267,30 @@ apiRouter.post('/chat', async (req, res) => {
       };
     });
 
+    // Gemini API yêu cầu lượt trò chuyện đầu tiên BẮT BUỘC phải là role 'user'
+    let geminiContents = [...contents];
+    while (geminiContents.length > 0 && geminiContents[0].role === 'model') {
+      geminiContents.shift();
+    }
+
+    if (geminiContents.length === 0) {
+      geminiContents.push({
+        role: 'user',
+        parts: [{ text: 'Xin chào Thầy Dũng!' }],
+      });
+    }
+
+    // Gộp các lượt liên tiếp cùng role để đảm bảo luân phiên user - model
+    const normalizedContents: any[] = [];
+    for (const turn of geminiContents) {
+      const prev = normalizedContents[normalizedContents.length - 1];
+      if (prev && prev.role === turn.role) {
+        prev.parts.push(...turn.parts);
+      } else {
+        normalizedContents.push(turn);
+      }
+    }
+
     let extendedInstruction = SYSTEM_INSTRUCTION_GIA_SU_AI;
     if (context) {
       extendedInstruction += `\n\n[Bối cảnh bài học/câu hỏi hiện tại]:\n${context}`;
@@ -276,14 +300,24 @@ apiRouter.post('/chat', async (req, res) => {
     }
 
     const response = await generateContentWithRetryAndFallback({
-      contents: contents,
+      contents: normalizedContents,
       config: {
         systemInstruction: extendedInstruction,
         temperature: 0.7,
       },
     });
 
-    const reply = response.text || 'Thầy xin lỗi, kết nối bị gián đoạn đôi chút. Em gửi lại câu hỏi nhé!';
+    let reply = '';
+    if (response) {
+      if (typeof response.text === 'string') {
+        reply = response.text;
+      } else if (typeof (response as any).text === 'function') {
+        reply = (response as any).text();
+      }
+    }
+    if (!reply) {
+      reply = 'Thầy xin lỗi, kết nối bị gián đoạn đôi chút. Em gửi lại câu hỏi nhé!';
+    }
     return res.json({ reply });
   } catch (error: any) {
     console.error('Error in /api/chat:', error);
