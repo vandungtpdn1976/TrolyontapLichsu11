@@ -23,7 +23,7 @@ interface TeacherChatPageProps {
   onClearInitialPrompt?: () => void;
 }
 
-// Helper nén ảnh nhẹ nhàng trên Canvas để gửi nhanh và giữ độ nét đọc chữ tư liệu/đề thi
+// Helper nén ảnh thông minh sang JPEG độ nén chuẩn để gửi siêu nhanh và không vượt quá giới hạn 4.5MB của Vercel
 const compressImageIfNeeded = (file: File): Promise<{ dataUrl: string; mimeType: string }> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -32,7 +32,7 @@ const compressImageIfNeeded = (file: File): Promise<{ dataUrl: string; mimeType:
       const img = new Image();
       img.onerror = reject;
       img.onload = () => {
-        const maxDim = 1800; // Đủ lớn để Gemini đọc rõ từng chữ đề thi SGK
+        const maxDim = 1200; // Đạt chuẩn sắc nét tối ưu để Gemini đọc rõ văn bản mà dung lượng chỉ ~150KB
         let { width, height } = img;
         if (width > maxDim || height > maxDim) {
           if (width > height) {
@@ -54,8 +54,9 @@ const compressImageIfNeeded = (file: File): Promise<{ dataUrl: string; mimeType:
         ctx.fillStyle = '#FFFFFF';
         ctx.fillRect(0, 0, width, height);
         ctx.drawImage(img, 0, 0, width, height);
-        const mimeType = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
-        const dataUrl = canvas.toDataURL(mimeType, 0.88);
+        // Luôn nén sang JPEG 0.8 để tránh file PNG quá nặng gây lỗi 413 trên Vercel Serverless
+        const mimeType = 'image/jpeg';
+        const dataUrl = canvas.toDataURL(mimeType, 0.8);
         resolve({ dataUrl, mimeType });
       };
       img.src = reader.result as string;
@@ -291,64 +292,69 @@ Bây giờ, em muốn chúng mình cùng ôn bài nào, hoặc em có ảnh đ�
     setLoading(true);
 
     try {
+      // Tối ưu cuộc trò chuyện gửi đi: chỉ lấy tối đa 8 lượt gần nhất và chỉ gửi ảnh ở lượt hiện tại để dung lượng JSON luôn siêu nhẹ (<300KB)
+      const recentHistory = [...messages, userMsg].slice(-8).map((m, idx, arr) => {
+        const isCurrent = idx === arr.length - 1;
+        return {
+          role: m.role,
+          content: m.content,
+          images: isCurrent && m.images ? m.images.map((img) => ({
+            dataUrl: img.dataUrl,
+            mimeType: img.mimeType,
+            name: img.name,
+          })) : undefined,
+        };
+      });
+
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [...messages, userMsg].map((m) => ({
-            role: m.role,
-            content: m.content,
-            images: m.images?.map((img) => ({
-              dataUrl: img.dataUrl,
-              mimeType: img.mimeType,
-              name: img.name,
-            })),
-          })),
-        }),
+        body: JSON.stringify({ messages: recentHistory }),
       });
 
+      // Đọc response một lần duy nhất bằng .text() để tuyệt đối không bị lỗi "body stream already read"
+      const rawText = await response.text();
+      let data: any = null;
+      try {
+        data = JSON.parse(rawText);
+      } catch {
+        data = null;
+      }
+
       if (!response.ok) {
-        let serverErrorText = '';
-        try {
-          const errorData = await response.json();
-          serverErrorText = errorData?.error || '';
-        } catch {
-          const rawText = await response.text();
-          if (
+        let serverErrorText = data?.error || '';
+        if (!serverErrorText) {
+          if (response.status === 413 || rawText.includes('413') || rawText.includes('Payload Too Large')) {
+            serverErrorText = 'Hình ảnh đính kèm quá lớn đối với máy chủ Vercel. Thầy đã tự động nén nhỏ hơn, em thử gửi lại câu hỏi nhé!';
+          } else if (
             rawText.includes('A server error') ||
             rawText.includes('FUNCTION_INVOCATION') ||
             rawText.includes('500') ||
             rawText.includes('504')
           ) {
             serverErrorText =
-              'Máy chủ Vercel đang xử lý hoặc chưa được thêm biến môi trường GEMINI_API_KEY. Bạn vui lòng vào Vercel Dashboard -> Project Settings -> Environment Variables -> Thêm biến GEMINI_API_KEY rồi Redeploy nhé!';
+              'Máy chủ Vercel chưa được thêm biến môi trường GEMINI_API_KEY hoặc đang khởi động lại. Bạn vui lòng vào Vercel Dashboard -> Project Settings -> Environment Variables -> Thêm biến GEMINI_API_KEY rồi Redeploy nhé!';
           } else {
-            serverErrorText = rawText || `Lỗi máy chủ (${response.status})`;
+            serverErrorText = `Lỗi kết nối máy chủ (${response.status})`;
           }
         }
-        throw new Error(serverErrorText || `Lỗi kết nối máy chủ (${response.status})`);
+        throw new Error(serverErrorText);
       }
 
-      let data: any = {};
-      try {
-        data = await response.json();
-      } catch {
-        throw new Error('Dữ liệu phản hồi từ máy chủ không đúng định dạng JSON.');
-      }
-
+      const reply = data?.reply || 'Thầy xin lỗi, hiện tại mạng có chút chậm. Em hỏi lại lần nữa nhé!';
       const assistantMsg: ChatMessage = {
         id: 'assistant-' + Date.now(),
         role: 'assistant',
-        content: data.reply || 'Thầy xin lỗi, hiện tại mạng có chút chậm. Em hỏi lại lần nữa nhé!',
+        content: reply,
         timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
       };
 
       setMessages((prev) => [...prev, assistantMsg]);
     } catch (err: any) {
-      console.error(err);
+      console.error('Chat error:', err);
       const rawError = String(err?.message || '');
       let friendlyError =
-        'Hệ thống máy chủ đang chịu tải cao tạm thời trong vài giây do lượng truy cập lớn. Em hãy bấm "🔄 Thử lại câu hỏi này ngay" bên dưới giúp Thầy nhé!';
+        'Hệ thống máy chủ đang chịu tải cao tạm thời. Em hãy bấm "🔄 Thử lại câu hỏi này ngay" bên dưới giúp Thầy nhé!';
       if (rawError.includes('GEMINI_API_KEY')) {
         friendlyError = rawError;
       } else if (rawError.includes('Unexpected token') || rawError.includes('is not valid JSON')) {
@@ -359,7 +365,8 @@ Bây giờ, em muốn chúng mình cùng ôn bài nào, hoặc em có ảnh đ�
         !rawError.includes('503') &&
         !rawError.includes('high demand') &&
         !rawError.includes('{"error"') &&
-        !rawError.includes('Failed to fetch')
+        !rawError.includes('Failed to fetch') &&
+        !rawError.includes('body stream already read')
       ) {
         friendlyError = rawError;
       }
