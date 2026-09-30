@@ -45,15 +45,29 @@ export function parseRequestBody(req: any): any {
   return req.body;
 }
 
+const modelCooldownMap = new Map<string, number>();
+
 export async function generateContentWithRetryAndFallback(params: {
   contents: any;
   config?: any;
 }) {
   const ai = getGeminiClient();
-  const candidateModels = ['gemini-3.8-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite'];
+  const baseModels = ['gemini-3.8-flash', 'gemini-3.1-flash-lite', 'gemini-flash-latest'];
+  const now = Date.now();
+
+  const candidateModels = [...baseModels].sort((a, b) => {
+    const aCooldown = (modelCooldownMap.get(a) || 0) > now ? 1 : 0;
+    const bCooldown = (modelCooldownMap.get(b) || 0) > now ? 1 : 0;
+    return aCooldown - bCooldown;
+  });
+
   let lastError: any = null;
 
   for (const model of candidateModels) {
+    if ((modelCooldownMap.get(model) || 0) > now) {
+      continue;
+    }
+
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
         const response = await ai.models.generateContent({
@@ -62,6 +76,7 @@ export async function generateContentWithRetryAndFallback(params: {
           config: params.config,
         });
         if (response && response.text) {
+          modelCooldownMap.delete(model);
           return response;
         }
       } catch (err: any) {
@@ -75,14 +90,29 @@ export async function generateContentWithRetryAndFallback(params: {
           errStr.includes('temporarily unavailable') ||
           errStr.includes('overloaded');
 
-        if (isTemporary && attempt === 1) {
-          await delay(1000);
-          continue;
+        if (isTemporary) {
+          modelCooldownMap.set(model, Date.now() + 45000);
+          if (attempt === 1) {
+            await delay(500);
+            continue;
+          }
         }
-        console.warn(`Mô hình ${model} đang bận (${errStr.slice(0, 80)}). Chuyển sang mô hình dự phòng...`);
         break;
       }
     }
+  }
+
+  try {
+    const fallbackResponse = await ai.models.generateContent({
+      model: 'gemini-3.1-flash-lite',
+      contents: params.contents,
+      config: params.config,
+    });
+    if (fallbackResponse && fallbackResponse.text) {
+      return fallbackResponse;
+    }
+  } catch (finalErr) {
+    lastError = finalErr;
   }
 
   throw lastError;
@@ -120,4 +150,35 @@ CÁC NGUYÊN TẮC BẮT BUỘC KHI TRẢ LỜI TRONG KHUNG CHAT:
 
 5. TRUNG THỰC VÀ BẢO ĐẢM TÍNH SƯ PHẠM:
 - Nếu tài liệu chưa đề cập hoặc không đủ dữ liệu để trả lời, phải nói rõ là tài liệu chưa đề cập, không đoán mò, và chỉ dẫn học sinh xem lại bài nào, trang nào trong SGK.
-- Không đưa trực tiếp đáp án để gian lận thi cử; luôn định hướng phương pháp tư duy để học sinh tự làm chủ kiến thức.`;
+- Không đưa trực tiếp đáp án để gian lận thi cử; luôn định hướng phương pháp tư duy để học sinh tự làm chủ kiến thức.
+
+6. XỬ LÝ HÌNH ẢNH DÁN HOẶC TẢI LÊN (ẢNH ĐỀ THI, TRANG SGK, BẢN ĐỒ, BÀI LÀM VIẾT TAY):
+- Khi học sinh dán ảnh hoặc gửi kèm ảnh (ảnh chụp đề kiểm tra trắc nghiệm 4 lựa chọn, câu hỏi trắc nghiệm Đúng - Sai theo format GDPT 2018, đoạn tư liệu lịch sử, sơ đồ tư duy, niên biểu, bản đồ hoặc bài viết tự luận học sinh chụp lại):
+  + Đọc và nhận diện kỹ toàn bộ văn bản, câu hỏi, các mệnh đề hoặc dữ liệu có trong hình ảnh.
+  + Trả lời cụ thể câu hỏi trong ảnh theo đúng chuẩn kiến thức SGK Lịch sử 11 GDPT 2018 (bộ Kết nối tri thức với cuộc sống).
+  + Nêu rõ đáp án đúng/sai của từng câu/ý, giải thích cặn kẽ bản chất sự kiện lịch sử, nhân vật, mốc thời gian và chỉ ra "từ khóa bẫy" nếu có.
+  + Luôn dùng giọng điệu sư phạm ân cần, khích lệ học sinh.`;
+
+export function formatInlineImagePart(dataUrl: string, fallbackMime = 'image/jpeg') {
+  if (!dataUrl || typeof dataUrl !== 'string') return null;
+  const match = dataUrl.match(/^data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+);base64,(.+)$/s);
+  if (match) {
+    return {
+      inlineData: {
+        mimeType: match[1],
+        data: match[2],
+      },
+    };
+  }
+  if (dataUrl.includes(',')) {
+    const [header, base64] = dataUrl.split(',');
+    const mimeMatch = header.match(/:(.*?);/);
+    return {
+      inlineData: {
+        mimeType: mimeMatch ? mimeMatch[1] : fallbackMime,
+        data: base64,
+      },
+    };
+  }
+  return null;
+}

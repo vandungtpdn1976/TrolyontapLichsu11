@@ -97,11 +97,20 @@ export interface EssayGradingResult {
   teacherAdvice: string;
 }
 
+export interface ChatMessageImage {
+  id: string;
+  dataUrl: string;
+  mimeType: string;
+  name?: string;
+  size?: number;
+}
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   timestamp: string;
+  images?: ChatMessageImage[];
   relatedTopicId?: string;
   suggestedQuestions?: string[];
   actionType?: 'why' | 'simplify' | 'example' | 'confused' | 'forgot' | 'quiz';

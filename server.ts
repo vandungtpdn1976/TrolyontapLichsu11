@@ -12,7 +12,8 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Enable CORS and preflight handling for all environments (Vercel & AI Studio)
 app.use((req, res, next) => {
@@ -54,17 +55,33 @@ const MISSING_API_KEY_ERROR =
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// Helper: Tự động thử lại và dự phòng mô hình nếu gặp lỗi 503 (high demand) hoặc 429
+// Helper: Bộ nhớ đệm cooldown tạm thời cho các mô hình gặp lỗi quá tải (503/429)
+const modelCooldownMap = new Map<string, number>();
+
+// Helper: Tự động thử lại và dự phòng mô hình thông minh nếu gặp lỗi 503 (high demand) hoặc 429
 async function generateContentWithRetryAndFallback(params: {
   contents: any;
   config?: any;
 }) {
   const ai = getGeminiClient();
-  // Thứ tự ưu tiên các mô hình: gemini-3.8-flash -> gemini-flash-latest -> gemini-3.1-flash-lite
-  const candidateModels = ['gemini-3.8-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite'];
+  const baseModels = ['gemini-3.8-flash', 'gemini-3.1-flash-lite', 'gemini-flash-latest'];
+  const now = Date.now();
+
+  // Ưu tiên các mô hình đang thông suốt (không bị cooldown)
+  const candidateModels = [...baseModels].sort((a, b) => {
+    const aCooldown = (modelCooldownMap.get(a) || 0) > now ? 1 : 0;
+    const bCooldown = (modelCooldownMap.get(b) || 0) > now ? 1 : 0;
+    return aCooldown - bCooldown;
+  });
+
   let lastError: any = null;
 
   for (const model of candidateModels) {
+    // Nếu mô hình đang trong thời gian cooldown do quá tải, chuyển ngay sang mô hình khác
+    if ((modelCooldownMap.get(model) || 0) > now) {
+      continue;
+    }
+
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
         const response = await ai.models.generateContent({
@@ -73,6 +90,8 @@ async function generateContentWithRetryAndFallback(params: {
           config: params.config,
         });
         if (response && response.text) {
+          // Xóa cooldown khi thành công
+          modelCooldownMap.delete(model);
           return response;
         }
       } catch (err: any) {
@@ -86,14 +105,31 @@ async function generateContentWithRetryAndFallback(params: {
           errStr.includes('temporarily unavailable') ||
           errStr.includes('overloaded');
 
-        if (isTemporary && attempt === 1) {
-          await delay(1000);
-          continue;
+        if (isTemporary) {
+          // Ghi nhớ tạm ngưng 45 giây để các lượt gọi tiếp theo được định tuyến tức thì sang model khác
+          modelCooldownMap.set(model, Date.now() + 45000);
+          if (attempt === 1) {
+            await delay(500);
+            continue;
+          }
         }
-        console.warn(`Mô hình ${model} đang bận (${errStr.slice(0, 80)}). Đang chuyển sang mô hình dự phòng...`);
-        break; // Chuyển sang candidateModel tiếp theo
+        break; // Chuyển sang candidate model kế tiếp
       }
     }
+  }
+
+  // Chốt chặn cuối cùng nếu mọi model chính đều bị nghẽn
+  try {
+    const fallbackResponse = await ai.models.generateContent({
+      model: 'gemini-3.1-flash-lite',
+      contents: params.contents,
+      config: params.config,
+    });
+    if (fallbackResponse && fallbackResponse.text) {
+      return fallbackResponse;
+    }
+  } catch (finalErr) {
+    lastError = finalErr;
   }
 
   throw lastError;
@@ -131,7 +167,14 @@ CÁC NGUYÊN TẮC BẮT BUỘC KHI TRẢ LỜI TRONG KHUNG CHAT:
 
 5. TRUNG THỰC VÀ BẢO ĐẢM TÍNH SƯ PHẠM:
 - Nếu tài liệu chưa đề cập hoặc không đủ dữ liệu để trả lời, phải nói rõ là tài liệu chưa đề cập, không đoán mò, và chỉ dẫn học sinh xem lại bài nào, trang nào trong SGK.
-- Không đưa trực tiếp đáp án để gian lận thi cử; luôn định hướng phương pháp tư duy để học sinh tự làm chủ kiến thức.`;
+- Không đưa trực tiếp đáp án để gian lận thi cử; luôn định hướng phương pháp tư duy để học sinh tự làm chủ kiến thức.
+
+6. XỬ LÝ HÌNH ẢNH DÁN HOẶC TẢI LÊN (ẢNH ĐỀ THI, TRANG SGK, BẢN ĐỒ, BÀI LÀM VIẾT TAY):
+- Khi học sinh dán ảnh hoặc gửi kèm ảnh (ảnh chụp đề kiểm tra trắc nghiệm 4 lựa chọn, câu hỏi trắc nghiệm Đúng - Sai theo format GDPT 2018, đoạn tư liệu lịch sử, sơ đồ tư duy, niên biểu, bản đồ hoặc bài viết tự luận học sinh chụp lại):
+  + Đọc và nhận diện kỹ toàn bộ văn bản, câu hỏi, các mệnh đề hoặc dữ liệu có trong hình ảnh.
+  + Trả lời cụ thể câu hỏi trong ảnh theo đúng chuẩn kiến thức SGK Lịch sử 11 GDPT 2018 (bộ Kết nối tri thức với cuộc sống).
+  + Nêu rõ đáp án đúng/sai của từng câu/ý, giải thích cặn kẽ bản chất sự kiện lịch sử, nhân vật, mốc thời gian và chỉ ra "từ khóa bẫy" nếu có.
+  + Luôn dùng giọng điệu sư phạm ân cần, khích lệ học sinh.`;
 
 // Tạo apiRouter để phục vụ đồng bộ cả khi có prefix /api hoặc không có prefix (hỗ trợ hoàn hảo Vercel Serverless Function & Express)
 const apiRouter = express.Router();
@@ -150,7 +193,32 @@ apiRouter.get('/health', (_req, res) => {
   });
 });
 
-// API: Chat with Gia sư AI Thầy Dũng
+// Helper: Phân giải ảnh dataUrl thành inlineData cho Gemini
+function formatInlineImagePart(dataUrl: string, fallbackMime = 'image/jpeg') {
+  if (!dataUrl || typeof dataUrl !== 'string') return null;
+  const match = dataUrl.match(/^data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+);base64,(.+)$/s);
+  if (match) {
+    return {
+      inlineData: {
+        mimeType: match[1],
+        data: match[2],
+      },
+    };
+  }
+  if (dataUrl.includes(',')) {
+    const [header, base64] = dataUrl.split(',');
+    const mimeMatch = header.match(/:(.*?);/);
+    return {
+      inlineData: {
+        mimeType: mimeMatch ? mimeMatch[1] : fallbackMime,
+        data: base64,
+      },
+    };
+  }
+  return null;
+}
+
+// API: Chat with Gia sư AI Thầy Dũng (Hỗ trợ đa phương thức: Văn bản & Dán hình ảnh)
 apiRouter.post('/chat', async (req, res) => {
   try {
     const { messages, context, actionType } = req.body;
@@ -165,11 +233,39 @@ apiRouter.post('/chat', async (req, res) => {
       return res.status(400).json({ error: 'Dữ liệu tin nhắn không hợp lệ.' });
     }
 
-    // Format conversation history for Gemini
-    const contents = messages.map((m: { role: string; content: string }) => ({
-      role: m.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: m.content }],
-    }));
+    // Format conversation history for Gemini (Hỗ trợ cả text và ảnh đính kèm/dán từ clipboard)
+    const contents = messages.map((m: {
+      role: string;
+      content: string;
+      images?: Array<{ dataUrl: string; mimeType?: string; name?: string }>;
+    }) => {
+      const parts: any[] = [];
+
+      // Đưa ảnh vào parts nếu có
+      if (Array.isArray(m.images) && m.images.length > 0) {
+        for (const img of m.images) {
+          const imgPart = formatInlineImagePart(img.dataUrl, img.mimeType);
+          if (imgPart) {
+            parts.push(imgPart);
+          }
+        }
+      }
+
+      // Đưa văn bản vào parts
+      const text = (m.content || '').trim();
+      if (text) {
+        parts.push({ text });
+      } else if (parts.length > 0) {
+        parts.push({ text: 'Thầy hãy phân tích chi tiết hình ảnh đính kèm này và giải đáp đầy đủ cho em theo kiến thức SGK Lịch sử 11 GDPT 2018 nhé!' });
+      } else {
+        parts.push({ text: '...' });
+      }
+
+      return {
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts,
+      };
+    });
 
     let extendedInstruction = SYSTEM_INSTRUCTION_GIA_SU_AI;
     if (context) {

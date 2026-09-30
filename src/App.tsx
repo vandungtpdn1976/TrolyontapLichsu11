@@ -91,7 +91,7 @@ export default function App() {
                 <Sparkles className="w-3 h-3 text-amber-300" />
               </div>
               <p className="text-[11px] text-stone-200 group-hover:text-white transition">
-                Cần Thầy giải đáp câu nào? Nhắn ngay!
+                Dán ảnh hoặc văn bản đề bài để Thầy giải đáp ngay!
               </p>
             </div>
           </button>

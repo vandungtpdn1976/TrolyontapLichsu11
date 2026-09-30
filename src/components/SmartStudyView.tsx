@@ -36,6 +36,7 @@ export const SmartStudyView: React.FC<SmartStudyViewProps> = ({ onAskTeacher, on
   // AI Generator state
   const [customTopicInput, setCustomTopicInput] = useState('');
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+  const [generationError, setGenerationError] = useState<string | null>(null);
 
   // Practice mini quiz state
   const [userAnswers, setUserAnswers] = useState<Record<number, number>>({});
@@ -43,6 +44,7 @@ export const SmartStudyView: React.FC<SmartStudyViewProps> = ({ onAskTeacher, on
 
   const handleSelectTopic = (id: string) => {
     setSelectedTopicId(id);
+    setGenerationError(null);
     if (PRESET_SMART_STUDY_DATA[id]) {
       setStudyData(PRESET_SMART_STUDY_DATA[id]);
     } else {
@@ -58,6 +60,7 @@ export const SmartStudyView: React.FC<SmartStudyViewProps> = ({ onAskTeacher, on
 
   const generateStudyDataForTopic = async (topicTitle: string, lessonName: string) => {
     setIsGeneratingAI(true);
+    setGenerationError(null);
     try {
       const res = await fetch('/api/smart-study', {
         method: 'POST',
@@ -65,13 +68,17 @@ export const SmartStudyView: React.FC<SmartStudyViewProps> = ({ onAskTeacher, on
         body: JSON.stringify({ topicTitle, lessonName }),
       });
 
+      const rawText = await res.text();
+      let data: any = null;
+      try {
+        data = JSON.parse(rawText);
+      } catch {
+        // non-JSON
+      }
+
       if (!res.ok) {
-        let errorMsg = 'Không thể tải dữ liệu ôn tập';
-        try {
-          const errorData = await res.json();
-          errorMsg = errorData.error || errorMsg;
-        } catch {
-          const rawText = await res.text();
+        let errorMsg = data?.error || '';
+        if (!errorMsg) {
           if (rawText.includes('A server error') || rawText.includes('FUNCTION_INVOCATION')) {
             errorMsg =
               'Máy chủ Vercel đang xử lý hoặc chưa cấu hình biến môi trường GEMINI_API_KEY. Vui lòng kiểm tra lại cài đặt Vercel.';
@@ -82,13 +89,22 @@ export const SmartStudyView: React.FC<SmartStudyViewProps> = ({ onAskTeacher, on
         throw new Error(errorMsg);
       }
 
-      const data: SmartStudyData = await res.json();
+      if (!data) {
+        throw new Error('Dữ liệu từ máy chủ không hợp lệ. Em hãy bấm tạo lại nhé!');
+      }
+
       setStudyData(data);
       setUserAnswers({});
       setQuizSubmitted(false);
     } catch (err: any) {
       console.error(err);
-      alert('Có lỗi khi tạo nội dung ôn tập: ' + (err.message || 'Lỗi không xác định'));
+      const fallback = PRESET_SMART_STUDY_DATA[selectedTopicId] || PRESET_SMART_STUDY_DATA['chu-de-1'];
+      if (fallback) {
+        setStudyData(fallback);
+      }
+      setGenerationError(
+        'Hệ thống đang chịu tải hoặc đạt hạn mức AI. Đã tự động hiển thị kiến thức chuẩn SGK Lịch sử 11 để em tiếp tục ôn tập!'
+      );
     } finally {
       setIsGeneratingAI(false);
     }
@@ -213,6 +229,25 @@ export const SmartStudyView: React.FC<SmartStudyViewProps> = ({ onAskTeacher, on
           })}
         </div>
       </div>
+
+      {/* Generation Error / Fallback Notice */}
+      {generationError && (
+        <div className="mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-300/80 text-amber-950 flex items-start justify-between gap-3 shadow-xs animate-in fade-in duration-300">
+          <div className="flex items-start gap-2.5">
+            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <div className="text-xs sm:text-sm">
+              <p className="font-bold text-amber-900">Thông báo từ Gia sư Thầy Dũng:</p>
+              <p className="mt-0.5 text-stone-700 leading-relaxed">{generationError}</p>
+            </div>
+          </div>
+          <button
+            onClick={() => setGenerationError(null)}
+            className="text-stone-400 hover:text-stone-700 text-xs px-2 py-1 rounded-lg border border-stone-300 hover:bg-white shrink-0 font-medium transition"
+          >
+            Đã hiểu
+          </button>
+        </div>
+      )}
 
       {/* Navigation Tabs for the 6 Sections */}
       <div className="bg-white border border-stone-200 rounded-2xl p-2 mb-6 shadow-xs flex items-center gap-1 overflow-x-auto text-xs font-semibold">
