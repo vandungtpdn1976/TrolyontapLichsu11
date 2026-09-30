@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, Sparkles, BookOpen, RefreshCw, HelpCircle, Lightbulb, Compass, Award } from 'lucide-react';
 import { ChatMessage } from '../types/history';
+import { safeFetchJson } from '../utils/apiHelper';
 
 interface TeacherChatPageProps {
   initialPrompt?: string;
@@ -86,34 +87,7 @@ Bây giờ, em muốn chúng mình cùng ôn bài nào trong chương trình L�
         }),
       });
 
-      if (!response.ok) {
-        let serverErrorText = '';
-        try {
-          const errorData = await response.json();
-          serverErrorText = errorData?.error || '';
-        } catch {
-          const rawText = await response.text();
-          if (
-            rawText.includes('A server error') ||
-            rawText.includes('FUNCTION_INVOCATION') ||
-            rawText.includes('500') ||
-            rawText.includes('504')
-          ) {
-            serverErrorText =
-              'Máy chủ Vercel đang xử lý hoặc chưa được thêm biến môi trường GEMINI_API_KEY. Bạn vui lòng vào Vercel Dashboard -> Project Settings -> Environment Variables -> Thêm biến GEMINI_API_KEY rồi Redeploy nhé!';
-          } else {
-            serverErrorText = rawText || `Lỗi máy chủ (${response.status})`;
-          }
-        }
-        throw new Error(serverErrorText || `Lỗi kết nối máy chủ (${response.status})`);
-      }
-
-      let data: any = {};
-      try {
-        data = await response.json();
-      } catch {
-        throw new Error('Dữ liệu phản hồi từ máy chủ không đúng định dạng JSON.');
-      }
+      const data = await safeFetchJson<{ reply?: string }>(response, 'Lỗi kết nối máy chủ chat');
 
       const assistantMsg: ChatMessage = {
         id: 'assistant-' + Date.now(),

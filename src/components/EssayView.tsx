@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { EssayQuestion, EssayGradingResult } from '../types/history';
 import { BookOpen, PenTool, Sparkles, CheckCircle2, AlertCircle, HelpCircle, MessageSquare, ChevronDown, ChevronUp, Award, RotateCcw, FileText } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { safeFetchJson } from '../utils/apiHelper';
 
 interface EssayViewProps {
   questions: EssayQuestion[];
@@ -42,24 +43,7 @@ export const EssayView: React.FC<EssayViewProps> = ({ questions, onAskTeacher })
         }),
       });
 
-      if (!response.ok) {
-        let errorMsg = 'Lỗi khi chấm bài';
-        try {
-          const errorData = await response.json();
-          errorMsg = errorData.error || errorMsg;
-        } catch {
-          const rawText = await response.text();
-          if (rawText.includes('A server error') || rawText.includes('FUNCTION_INVOCATION')) {
-            errorMsg =
-              'Máy chủ Vercel đang xử lý hoặc chưa cấu hình biến môi trường GEMINI_API_KEY. Vui lòng kiểm tra lại cài đặt Vercel.';
-          } else {
-            errorMsg = rawText || `Lỗi máy chủ (${response.status})`;
-          }
-        }
-        throw new Error(errorMsg);
-      }
-
-      const result: EssayGradingResult = await response.json();
+      const result = await safeFetchJson<EssayGradingResult>(response, 'Lỗi khi chấm bài');
       setGradingResults((prev) => ({ ...prev, [questionId]: result }));
 
       if (result.score >= 8.0) {

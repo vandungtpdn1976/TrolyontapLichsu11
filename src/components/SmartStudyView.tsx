@@ -22,6 +22,7 @@ import {
   MessageSquare
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { safeFetchJson } from '../utils/apiHelper';
 
 interface SmartStudyViewProps {
   onAskTeacher: (context: string) => void;
@@ -65,24 +66,7 @@ export const SmartStudyView: React.FC<SmartStudyViewProps> = ({ onAskTeacher, on
         body: JSON.stringify({ topicTitle, lessonName }),
       });
 
-      if (!res.ok) {
-        let errorMsg = 'Không thể tải dữ liệu ôn tập';
-        try {
-          const errorData = await res.json();
-          errorMsg = errorData.error || errorMsg;
-        } catch {
-          const rawText = await res.text();
-          if (rawText.includes('A server error') || rawText.includes('FUNCTION_INVOCATION')) {
-            errorMsg =
-              'Máy chủ Vercel đang xử lý hoặc chưa cấu hình biến môi trường GEMINI_API_KEY. Vui lòng kiểm tra lại cài đặt Vercel.';
-          } else {
-            errorMsg = rawText || `Lỗi máy chủ (${res.status})`;
-          }
-        }
-        throw new Error(errorMsg);
-      }
-
-      const data: SmartStudyData = await res.json();
+      const data = await safeFetchJson<SmartStudyData>(res, 'Không thể tải dữ liệu ôn tập');
       setStudyData(data);
       setUserAnswers({});
       setQuizSubmitted(false);

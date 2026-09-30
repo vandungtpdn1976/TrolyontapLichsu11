@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Sparkles, FileText, CheckCircle2, XCircle, AlertCircle, AlertTriangle, ArrowRight, RotateCcw, PenTool, CheckSquare, ToggleLeft, BookOpen, Send, Loader2 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { safeFetchJson } from '../utils/apiHelper';
 
 interface DocumentQuizGeneratorProps {
   onAskTeacher: (context: string) => void;
@@ -123,23 +124,7 @@ export const DocumentQuizGenerator: React.FC<DocumentQuizGeneratorProps> = ({ on
         }),
       });
 
-      if (!res.ok) {
-        let err = 'Không thể tạo bài tập';
-        try {
-          const errData = await res.json();
-          err = errData.error || err;
-        } catch {
-          const raw = await res.text();
-          if (raw.includes('A server error') || raw.includes('FUNCTION_INVOCATION')) {
-            err = 'Máy chủ Vercel đang xử lý hoặc chưa cấu hình biến môi trường GEMINI_API_KEY. Vui lòng kiểm tra lại biến môi trường.';
-          } else {
-            err = raw || `Lỗi máy chủ (${res.status})`;
-          }
-        }
-        throw new Error(err);
-      }
-
-      const data = await res.json();
+      const data = await safeFetchJson<any>(res, 'Không thể tạo bài tập từ tư liệu');
       setGeneratedQuiz(data);
       confetti({
         particleCount: 50,
@@ -198,11 +183,7 @@ export const DocumentQuizGenerator: React.FC<DocumentQuizGeneratorProps> = ({ on
         }),
       });
 
-      if (!res.ok) {
-        throw new Error('Lỗi máy chủ khi chấm bài tự luận.');
-      }
-
-      const result = await res.json();
+      const result = await safeFetchJson<any>(res, 'Lỗi máy chủ khi chấm bài tự luận');
       setEssayGradingResult(result);
       if (result.score >= 8.0) {
         confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 } });

@@ -5,26 +5,31 @@ import {
   setCorsHeaders,
   parseRequestBody,
   safeJsonParse,
+  sendJson,
 } from './_gemini';
 
 export default async function handler(req: any, res: any) {
   setCorsHeaders(res);
 
   if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+    if (typeof res.status === 'function') {
+      return res.status(200).end();
+    }
+    res.statusCode = 200;
+    return res.end();
   }
 
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Phương thức không được hỗ trợ.' });
+    return sendJson(res, 405, { error: 'Phương thức không được hỗ trợ.' });
   }
 
   try {
     const apiKey = getGeminiApiKey();
     if (!apiKey) {
-      return res.status(500).json({ error: MISSING_API_KEY_ERROR });
+      return sendJson(res, 500, { error: MISSING_API_KEY_ERROR });
     }
 
-    const body = parseRequestBody(req);
+    const body = await parseRequestBody(req);
     const { topicTitle, lessonName, studentKnowledgeInput, focusLevel } = body;
 
     const inputContext = studentKnowledgeInput?.trim() || '';
@@ -129,7 +134,7 @@ Trả về đúng định dạng JSON:
     if (!parsed || Object.keys(parsed).length === 0) {
       throw new Error('Không thể phân tích nội dung ôn tập thông minh từ AI. Vui lòng thử lại nhé!');
     }
-    return res.status(200).json(parsed);
+    return sendJson(res, 200, parsed);
   } catch (error: any) {
     console.error('Error in /api/smart-study:', error);
     const rawError = String(error?.message || '');
@@ -143,6 +148,6 @@ Trả về đúng định dạng JSON:
     ) {
       cleanMessage = rawError;
     }
-    return res.status(500).json({ error: cleanMessage });
+    return sendJson(res, 500, { error: cleanMessage });
   }
 }

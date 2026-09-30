@@ -28,21 +28,75 @@ export const MISSING_API_KEY_ERROR =
 export const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export function setCorsHeaders(res: any) {
+  if (!res || typeof res.setHeader !== 'function') return;
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
 }
 
-export function parseRequestBody(req: any): any {
-  if (!req.body) return {};
-  if (typeof req.body === 'string') {
+export function sendJson(res: any, statusCode: number, data: any) {
+  setCorsHeaders(res);
+  try {
+    if (typeof res.status === 'function') {
+      if (typeof res.json === 'function') {
+        return res.status(statusCode).json(data);
+      }
+      res.status(statusCode);
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      return res.end(JSON.stringify(data));
+    }
+    if (typeof res.writeHead === 'function') {
+      res.writeHead(statusCode, { 'Content-Type': 'application/json; charset=utf-8' });
+      return res.end(JSON.stringify(data));
+    }
+    res.statusCode = statusCode;
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    return res.end(JSON.stringify(data));
+  } catch (err) {
+    console.error('sendJson error:', err);
     try {
-      return JSON.parse(req.body);
-    } catch {
-      return {};
+      res.statusCode = statusCode;
+      res.end(JSON.stringify(data));
+    } catch {}
+  }
+}
+
+export async function parseRequestBody(req: any): Promise<any> {
+  if (req.body) {
+    if (typeof req.body === 'string') {
+      try {
+        return JSON.parse(req.body);
+      } catch {
+        return {};
+      }
+    }
+    if (typeof req.body === 'object') {
+      return req.body;
     }
   }
-  return req.body;
+
+  // If body is not pre-parsed (e.g. Node raw IncomingMessage stream on Vercel)
+  if (typeof req.on === 'function') {
+    return new Promise((resolve) => {
+      let data = '';
+      req.on('data', (chunk: any) => {
+        data += chunk;
+      });
+      req.on('end', () => {
+        if (!data) return resolve({});
+        try {
+          resolve(JSON.parse(data));
+        } catch {
+          resolve({});
+        }
+      });
+      req.on('error', () => {
+        resolve({});
+      });
+    });
+  }
+
+  return {};
 }
 
 export function safeJsonParse<T = any>(text: string, fallback: T = {} as T): T {
@@ -84,43 +138,53 @@ export async function generateContentWithRetryAndFallback(params: {
   contents: any;
   config?: any;
 }) {
+  const apiKey = getGeminiApiKey();
+  if (!apiKey || !apiKey.trim()) {
+    throw new Error(MISSING_API_KEY_ERROR);
+  }
+
   const ai = getGeminiClient();
-  const candidateModels = ['gemini-3.8-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite'];
+  const candidateModels = ['gemini-3.8-flash', 'gemini-flash-latest'];
   let lastError: any = null;
 
   for (const model of candidateModels) {
-    for (let attempt = 1; attempt <= 2; attempt++) {
-      try {
-        const response = await ai.models.generateContent({
-          model,
-          contents: params.contents,
-          config: params.config,
-        });
-        if (response && response.text) {
-          return response;
-        }
-      } catch (err: any) {
-        lastError = err;
-        const errStr = String(err?.message || err);
-        const isTemporary =
-          errStr.includes('503') ||
-          errStr.includes('429') ||
-          errStr.includes('high demand') ||
-          errStr.includes('Resource has been exhausted') ||
-          errStr.includes('temporarily unavailable') ||
-          errStr.includes('overloaded');
+    try {
+      const response = await ai.models.generateContent({
+        model,
+        contents: params.contents,
+        config: params.config,
+      });
+      if (response && response.text) {
+        return response;
+      }
+    } catch (err: any) {
+      lastError = err;
+      const errStr = String(err?.message || err);
+      console.warn(`Mô hình ${model} gặp lỗi (${errStr.slice(0, 100)}).`);
 
-        if (isTemporary && attempt === 1) {
-          await delay(1000);
-          continue;
-        }
-        console.warn(`Mô hình ${model} đang bận (${errStr.slice(0, 80)}). Chuyển sang mô hình dự phòng...`);
-        break;
+      // If invalid API key, fail immediately without waiting
+      if (errStr.includes('API_KEY_INVALID') || errStr.includes('API key not valid')) {
+        throw new Error(
+          'GEMINI_API_KEY không hợp lệ hoặc đã hết hạn. Bạn vui lòng tạo API key mới trên Google AI Studio rồi cập nhật vào Vercel Project Settings -> Environment Variables nhé!'
+        );
+      }
+
+      // Quick retry for transient issues
+      const isTemporary =
+        errStr.includes('503') ||
+        errStr.includes('429') ||
+        errStr.includes('high demand') ||
+        errStr.includes('Resource has been exhausted') ||
+        errStr.includes('temporarily unavailable') ||
+        errStr.includes('overloaded');
+
+      if (isTemporary) {
+        await delay(500);
       }
     }
   }
 
-  throw lastError;
+  throw lastError || new Error('Không thể kết nối đến mô hình AI.');
 }
 
 export const SYSTEM_INSTRUCTION_GIA_SU_AI = `Bạn là trợ lý học tập môn Lịch sử lớp 11, giọng điệu luôn lịch sự, nhã nhặn, khiêm tốn, ân cần và chuẩn mực như giáo viên đang giảng bài cho học sinh (Thầy Dũng / Anh Dũng).

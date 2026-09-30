@@ -92,44 +92,51 @@ async function generateContentWithRetryAndFallback(params: {
   contents: any;
   config?: any;
 }) {
+  const apiKey = getGeminiApiKey();
+  if (!apiKey || !apiKey.trim()) {
+    throw new Error(MISSING_API_KEY_ERROR);
+  }
+
   const ai = getGeminiClient();
-  // Thứ tự ưu tiên các mô hình: gemini-3.8-flash -> gemini-flash-latest -> gemini-3.1-flash-lite
-  const candidateModels = ['gemini-3.8-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite'];
+  const candidateModels = ['gemini-3.8-flash', 'gemini-flash-latest'];
   let lastError: any = null;
 
   for (const model of candidateModels) {
-    for (let attempt = 1; attempt <= 2; attempt++) {
-      try {
-        const response = await ai.models.generateContent({
-          model,
-          contents: params.contents,
-          config: params.config,
-        });
-        if (response && response.text) {
-          return response;
-        }
-      } catch (err: any) {
-        lastError = err;
-        const errStr = String(err?.message || err);
-        const isTemporary =
-          errStr.includes('503') ||
-          errStr.includes('429') ||
-          errStr.includes('high demand') ||
-          errStr.includes('Resource has been exhausted') ||
-          errStr.includes('temporarily unavailable') ||
-          errStr.includes('overloaded');
+    try {
+      const response = await ai.models.generateContent({
+        model,
+        contents: params.contents,
+        config: params.config,
+      });
+      if (response && response.text) {
+        return response;
+      }
+    } catch (err: any) {
+      lastError = err;
+      const errStr = String(err?.message || err);
+      console.warn(`Mô hình ${model} gặp lỗi (${errStr.slice(0, 100)}).`);
 
-        if (isTemporary && attempt === 1) {
-          await delay(1000);
-          continue;
-        }
-        console.warn(`Mô hình ${model} đang bận (${errStr.slice(0, 80)}). Đang chuyển sang mô hình dự phòng...`);
-        break; // Chuyển sang candidateModel tiếp theo
+      if (errStr.includes('API_KEY_INVALID') || errStr.includes('API key not valid')) {
+        throw new Error(
+          'GEMINI_API_KEY không hợp lệ hoặc đã hết hạn. Bạn vui lòng tạo API key mới trên Google AI Studio rồi cập nhật vào Vercel Settings -> Environment Variables nhé!'
+        );
+      }
+
+      const isTemporary =
+        errStr.includes('503') ||
+        errStr.includes('429') ||
+        errStr.includes('high demand') ||
+        errStr.includes('Resource has been exhausted') ||
+        errStr.includes('temporarily unavailable') ||
+        errStr.includes('overloaded');
+
+      if (isTemporary) {
+        await delay(500);
       }
     }
   }
 
-  throw lastError;
+  throw lastError || new Error('Không thể kết nối đến mô hình AI.');
 }
 
 const SYSTEM_INSTRUCTION_GIA_SU_AI = `Bạn là trợ lý học tập môn Lịch sử lớp 11, giọng điệu luôn lịch sự, nhã nhặn, khiêm tốn, ân cần và chuẩn mực như giáo viên đang giảng bài cho học sinh (Thầy Dũng / Anh Dũng).
