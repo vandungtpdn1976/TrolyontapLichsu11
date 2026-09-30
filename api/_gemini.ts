@@ -45,6 +45,21 @@ export function parseRequestBody(req: any): any {
   return req.body;
 }
 
+export function safeJsonParse<T = any>(str: string, fallback: T): T {
+  if (!str || typeof str !== 'string') return fallback;
+  try {
+    let cleaned = str.trim();
+    if (cleaned.startsWith('```json')) {
+      cleaned = cleaned.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+    } else if (cleaned.startsWith('```')) {
+      cleaned = cleaned.replace(/^```\s*/, '').replace(/\s*```$/, '');
+    }
+    return JSON.parse(cleaned);
+  } catch {
+    return fallback;
+  }
+}
+
 export async function generateContentWithRetryAndFallback(params: {
   contents: any;
   config?: any;

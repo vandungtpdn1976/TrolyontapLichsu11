@@ -1,14 +1,18 @@
-import { getGeminiApiKey, setCorsHeaders } from './_gemini';
+import { getGeminiApiKey, setCorsHeaders, sendJson } from './_gemini';
 
 export default async function handler(req: any, res: any) {
   setCorsHeaders(res);
 
   if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+    if (typeof res.status === 'function') {
+      return res.status(200).end();
+    }
+    res.statusCode = 200;
+    return res.end();
   }
 
   const hasKey = Boolean(getGeminiApiKey());
-  return res.status(200).json({
+  return sendJson(res, 200, {
     status: 'ok',
     environment: process.env.VERCEL ? 'vercel' : 'local_or_aistudio',
     hasGeminiKey: hasKey,

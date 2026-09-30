@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Sparkles, FileText, CheckCircle2, XCircle, AlertCircle, AlertTriangle, ArrowRight, RotateCcw, PenTool, CheckSquare, ToggleLeft, BookOpen, Send, Loader2 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { safeFetchJson } from '../utils/apiHelper';
 
 interface DocumentQuizGeneratorProps {
   onAskTeacher: (context: string) => void;
@@ -88,7 +89,6 @@ export const DocumentQuizGenerator: React.FC<DocumentQuizGeneratorProps> = ({ on
   const [essayAnswer, setEssayAnswer] = useState('');
   const [isGradingEssay, setIsGradingEssay] = useState(false);
   const [essayGradingResult, setEssayGradingResult] = useState<any>(null);
-  const [essayGradingError, setEssayGradingError] = useState<string | null>(null);
 
   const handleSelectCurated = (doc: typeof CURATED_DOCUMENTS[0]) => {
     setDocumentInput(doc.text);
@@ -124,30 +124,7 @@ export const DocumentQuizGenerator: React.FC<DocumentQuizGeneratorProps> = ({ on
         }),
       });
 
-      const raw = await res.text();
-      let data: any = null;
-      try {
-        data = JSON.parse(raw);
-      } catch {
-        // non-JSON response
-      }
-
-      if (!res.ok) {
-        let err = data?.error || '';
-        if (!err) {
-          if (raw.includes('A server error') || raw.includes('FUNCTION_INVOCATION')) {
-            err = 'Máy chủ Vercel đang xử lý hoặc chưa cấu hình biến môi trường GEMINI_API_KEY. Vui lòng kiểm tra lại biến môi trường.';
-          } else {
-            err = raw || `Lỗi máy chủ (${res.status})`;
-          }
-        }
-        throw new Error(err);
-      }
-
-      if (!data) {
-        throw new Error('Dữ liệu từ máy chủ không hợp lệ. Em hãy bấm tạo lại nhé!');
-      }
-
+      const data = await safeFetchJson<any>(res, 'Không thể tạo bài tập từ tư liệu');
       setGeneratedQuiz(data);
       confetti({
         particleCount: 50,
@@ -188,9 +165,8 @@ export const DocumentQuizGenerator: React.FC<DocumentQuizGeneratorProps> = ({ on
 
   // Grade Essay
   const handleGradeGeneratedEssay = async () => {
-    setEssayGradingError(null);
     if (!essayAnswer.trim() || essayAnswer.trim().length < 15) {
-      setEssayGradingError('Em hãy viết câu trả lời ít nhất 1-2 câu hoàn chỉnh để Thầy chấm điểm nhé!');
+      alert('Em hãy viết câu trả lời ít nhất 1-2 câu hoàn chỉnh để Thầy chấm điểm nhé!');
       return;
     }
 
@@ -207,28 +183,13 @@ export const DocumentQuizGenerator: React.FC<DocumentQuizGeneratorProps> = ({ on
         }),
       });
 
-      const raw = await res.text();
-      let result: any = null;
-      try {
-        result = JSON.parse(raw);
-      } catch {
-        // non-JSON
-      }
-
-      if (!res.ok) {
-        throw new Error(result?.error || raw || 'Lỗi máy chủ khi chấm bài tự luận.');
-      }
-
-      if (!result) {
-        throw new Error('Dữ liệu chấm điểm không hợp lệ. Em hãy thử lại nhé!');
-      }
-
+      const result = await safeFetchJson<any>(res, 'Lỗi máy chủ khi chấm bài tự luận');
       setEssayGradingResult(result);
       if (result.score >= 8.0) {
         confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 } });
       }
     } catch (err: any) {
-      setEssayGradingError(err.message || 'Có lỗi khi chấm bài tự luận.');
+      alert(err.message || 'Có lỗi khi chấm bài tự luận.');
     } finally {
       setIsGradingEssay(false);
     }
@@ -772,11 +733,6 @@ export const DocumentQuizGenerator: React.FC<DocumentQuizGeneratorProps> = ({ on
                     </>
                   )}
                 </button>
-                {essayGradingError && (
-                  <p className="mt-2 text-xs text-red-600 bg-red-50 p-2.5 rounded-xl border border-red-200">
-                    {essayGradingError}
-                  </p>
-                )}
               </div>
 
               {/* Grading Result */}
