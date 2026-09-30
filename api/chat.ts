@@ -5,35 +5,30 @@ import {
   generateContentWithRetryAndFallback,
   setCorsHeaders,
   parseRequestBody,
-  sendJson,
 } from './_gemini';
 
 export default async function handler(req: any, res: any) {
   setCorsHeaders(res);
 
   if (req.method === 'OPTIONS') {
-    if (typeof res.status === 'function') {
-      return res.status(200).end();
-    }
-    res.statusCode = 200;
-    return res.end();
+    return res.status(200).end();
   }
 
   if (req.method !== 'POST') {
-    return sendJson(res, 405, { error: 'Phương thức không được hỗ trợ.' });
+    return res.status(405).json({ error: 'Phương thức không được hỗ trợ.' });
   }
 
   try {
     const apiKey = getGeminiApiKey();
     if (!apiKey) {
-      return sendJson(res, 500, { error: MISSING_API_KEY_ERROR });
+      return res.status(500).json({ error: MISSING_API_KEY_ERROR });
     }
 
-    const body = await parseRequestBody(req);
+    const body = parseRequestBody(req);
     const { messages, context, actionType } = body;
 
     if (!messages || !Array.isArray(messages)) {
-      return sendJson(res, 400, { error: 'Dữ liệu tin nhắn không hợp lệ.' });
+      return res.status(400).json({ error: 'Dữ liệu tin nhắn không hợp lệ.' });
     }
 
     const contents = messages.map((m: { role: string; content: string }) => ({
@@ -58,7 +53,7 @@ export default async function handler(req: any, res: any) {
     });
 
     const reply = response.text || 'Thầy xin lỗi, kết nối bị gián đoạn đôi chút. Em gửi lại câu hỏi nhé!';
-    return sendJson(res, 200, { reply });
+    return res.status(200).json({ reply });
   } catch (error: any) {
     console.error('Error in /api/chat:', error);
     const rawError = String(error?.message || '');
@@ -73,6 +68,6 @@ export default async function handler(req: any, res: any) {
     ) {
       cleanMessage = rawError;
     }
-    return sendJson(res, 500, { error: cleanMessage });
+    return res.status(500).json({ error: cleanMessage });
   }
 }
