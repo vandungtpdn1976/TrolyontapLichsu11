@@ -43,27 +43,30 @@ export const EssayView: React.FC<EssayViewProps> = ({ questions, onAskTeacher })
       });
 
       const rawText = await response.text();
-      let data: any = null;
+      let result: any = null;
       try {
-        data = JSON.parse(rawText);
+        result = JSON.parse(rawText);
       } catch {
-        data = null;
+        // non-JSON
       }
 
       if (!response.ok) {
-        let errorMsg = data?.error || '';
+        let errorMsg = result?.error || '';
         if (!errorMsg) {
-          if (rawText.includes('A server error') || rawText.includes('FUNCTION_INVOCATION') || rawText.includes('500')) {
+          if (rawText.includes('A server error') || rawText.includes('FUNCTION_INVOCATION')) {
             errorMsg =
               'Máy chủ Vercel đang xử lý hoặc chưa cấu hình biến môi trường GEMINI_API_KEY. Vui lòng kiểm tra lại cài đặt Vercel.';
           } else {
-            errorMsg = `Lỗi máy chủ (${response.status})`;
+            errorMsg = rawText || `Lỗi máy chủ (${response.status})`;
           }
         }
         throw new Error(errorMsg);
       }
 
-      const result: EssayGradingResult = data;
+      if (!result) {
+        throw new Error('Dữ liệu chấm điểm không hợp lệ. Em hãy thử lại nhé!');
+      }
+
       setGradingResults((prev) => ({ ...prev, [questionId]: result }));
 
       if (result.score >= 8.0) {

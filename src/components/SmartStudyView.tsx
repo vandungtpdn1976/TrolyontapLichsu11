@@ -70,20 +70,24 @@ export const SmartStudyView: React.FC<SmartStudyViewProps> = ({ onAskTeacher, on
       try {
         data = JSON.parse(rawText);
       } catch {
-        data = null;
+        // non-JSON
       }
 
       if (!res.ok) {
         let errorMsg = data?.error || '';
         if (!errorMsg) {
-          if (rawText.includes('A server error') || rawText.includes('FUNCTION_INVOCATION') || rawText.includes('500')) {
+          if (rawText.includes('A server error') || rawText.includes('FUNCTION_INVOCATION')) {
             errorMsg =
               'Máy chủ Vercel đang xử lý hoặc chưa cấu hình biến môi trường GEMINI_API_KEY. Vui lòng kiểm tra lại cài đặt Vercel.';
           } else {
-            errorMsg = `Lỗi máy chủ (${res.status})`;
+            errorMsg = rawText || `Lỗi máy chủ (${res.status})`;
           }
         }
         throw new Error(errorMsg);
+      }
+
+      if (!data) {
+        throw new Error('Dữ liệu từ máy chủ không hợp lệ. Em hãy bấm tạo lại nhé!');
       }
 
       setStudyData(data);

@@ -5,7 +5,6 @@ import {
   generateContentWithRetryAndFallback,
   setCorsHeaders,
   parseRequestBody,
-  formatInlineImagePart,
 } from './_gemini';
 
 export default async function handler(req: any, res: any) {
@@ -22,70 +21,22 @@ export default async function handler(req: any, res: any) {
   try {
     const apiKey = getGeminiApiKey();
     if (!apiKey) {
-      return res.status(500).json({ error: MISSING_API_KEY_ERROR });
+      return res.status(200).json({
+        reply: `Chào em! Hiện tại trên môi trường Vercel chưa được kết nối với biến môi trường **GEMINI_API_KEY**.\n\n👉 **Hướng dẫn kích hoạt Gia sư AI trên Vercel**:\n1. Mở [Vercel Dashboard](https://vercel.com/dashboard) và chọn dự án Sử Vàng 11.\n2. Vào tab **Settings** -> chọn menu **Environment Variables**.\n3. Thêm biến mới: Key là \`GEMINI_API_KEY\` và Value là API Key của bạn từ Google AI Studio.\n4. Bấm **Save**, sau đó sang tab **Deployments** bấm dấu 3 chấm (...) ở bản deploy mới nhất -> chọn **Redeploy** là trò chuyện được ngay nhé!`,
+      });
     }
 
-    const body = parseRequestBody(req);
+    const body = await parseRequestBody(req);
     const { messages, context, actionType } = body;
 
     if (!messages || !Array.isArray(messages)) {
       return res.status(400).json({ error: 'Dữ liệu tin nhắn không hợp lệ.' });
     }
 
-    const rawContents = messages.map((m: {
-      role: string;
-      content: string;
-      images?: Array<{ dataUrl: string; mimeType?: string; name?: string }>;
-    }) => {
-      const parts: any[] = [];
-
-      if (Array.isArray(m.images) && m.images.length > 0) {
-        for (const img of m.images) {
-          const imgPart = formatInlineImagePart(img.dataUrl, img.mimeType);
-          if (imgPart) {
-            parts.push(imgPart);
-          }
-        }
-      }
-
-      const text = (m.content || '').trim();
-      if (text) {
-        parts.push({ text });
-      } else if (parts.length > 0) {
-        parts.push({ text: 'Thầy hãy phân tích chi tiết hình ảnh đính kèm này và giải đáp đầy đủ cho em theo kiến thức SGK Lịch sử 11 GDPT 2018 nhé!' });
-      } else {
-        parts.push({ text: '...' });
-      }
-
-      return {
-        role: m.role === 'assistant' ? 'model' : 'user',
-        parts,
-      };
-    });
-
-    // Gemini API yêu cầu lượt trò chuyện đầu tiên BẮT BUỘC phải là role 'user'
-    let geminiContents = [...rawContents];
-    while (geminiContents.length > 0 && geminiContents[0].role === 'model') {
-      geminiContents.shift();
-    }
-
-    if (geminiContents.length === 0) {
-      geminiContents.push({
-        role: 'user',
-        parts: [{ text: 'Xin chào Thầy Dũng!' }],
-      });
-    }
-
-    // Gộp các lượt liên tiếp cùng role để đảm bảo luân phiên user - model
-    const normalizedContents: any[] = [];
-    for (const turn of geminiContents) {
-      const prev = normalizedContents[normalizedContents.length - 1];
-      if (prev && prev.role === turn.role) {
-        prev.parts.push(...turn.parts);
-      } else {
-        normalizedContents.push(turn);
-      }
-    }
+    const contents = messages.map((m: { role: string; content: string }) => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }],
+    }));
 
     let extendedInstruction = SYSTEM_INSTRUCTION_GIA_SU_AI;
     if (context) {
@@ -96,40 +47,20 @@ export default async function handler(req: any, res: any) {
     }
 
     const response = await generateContentWithRetryAndFallback({
-      contents: normalizedContents,
+      contents: contents,
       config: {
         systemInstruction: extendedInstruction,
         temperature: 0.7,
       },
     });
 
-    let reply = '';
-    if (response) {
-      if (typeof response.text === 'string') {
-        reply = response.text;
-      } else if (typeof (response as any).text === 'function') {
-        reply = (response as any).text();
-      }
-    }
-    if (!reply) {
-      reply = 'Thầy xin lỗi, kết nối bị gián đoạn đôi chút. Em gửi lại câu hỏi nhé!';
-    }
-
+    const reply = response.text || 'Thầy xin lỗi, kết nối bị gián đoạn đôi chút. Em gửi lại câu hỏi nhé!';
     return res.status(200).json({ reply });
   } catch (error: any) {
     console.error('Error in /api/chat:', error);
-    const rawError = String(error?.message || '');
-    let cleanMessage =
-      'Hệ thống máy chủ đang chịu tải cao tạm thời. Em vui lòng bấm "Thử lại câu hỏi này" hoặc gửi lại sau giây lát giúp Thầy nhé!';
-    if (
-      rawError &&
-      !rawError.includes('503') &&
-      !rawError.includes('high demand') &&
-      !rawError.includes('429') &&
-      !rawError.includes('{"error"')
-    ) {
-      cleanMessage = rawError;
-    }
-    return res.status(500).json({ error: cleanMessage });
+    return res.status(200).json({
+      reply:
+        'Thầy Dũng xin chào em! Hệ thống AI đang tạm thời có lượng truy cập lớn trong vài giây. Em hãy bấm nút "🔄 Thử lại câu hỏi này ngay" bên dưới giúp Thầy nhé, hoặc hỏi Thầy về các bài học trọng tâm Lịch sử 11 (Cách mạng tư sản, Chủ nghĩa tư bản, Liên bang Xô Viết, Phong trào Cần vương...)!',
+    });
   }
 }

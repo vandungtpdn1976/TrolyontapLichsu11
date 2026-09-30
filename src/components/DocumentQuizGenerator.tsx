@@ -123,24 +123,28 @@ export const DocumentQuizGenerator: React.FC<DocumentQuizGeneratorProps> = ({ on
         }),
       });
 
-      const rawText = await res.text();
+      const raw = await res.text();
       let data: any = null;
       try {
-        data = JSON.parse(rawText);
+        data = JSON.parse(raw);
       } catch {
-        data = null;
+        // non-JSON response
       }
 
       if (!res.ok) {
         let err = data?.error || '';
         if (!err) {
-          if (rawText.includes('A server error') || rawText.includes('FUNCTION_INVOCATION') || rawText.includes('500')) {
+          if (raw.includes('A server error') || raw.includes('FUNCTION_INVOCATION')) {
             err = 'Máy chủ Vercel đang xử lý hoặc chưa cấu hình biến môi trường GEMINI_API_KEY. Vui lòng kiểm tra lại biến môi trường.';
           } else {
-            err = `Lỗi máy chủ (${res.status})`;
+            err = raw || `Lỗi máy chủ (${res.status})`;
           }
         }
         throw new Error(err);
+      }
+
+      if (!data) {
+        throw new Error('Dữ liệu từ máy chủ không hợp lệ. Em hãy bấm tạo lại nhé!');
       }
 
       setGeneratedQuiz(data);
@@ -201,11 +205,22 @@ export const DocumentQuizGenerator: React.FC<DocumentQuizGeneratorProps> = ({ on
         }),
       });
 
-      if (!res.ok) {
-        throw new Error('Lỗi máy chủ khi chấm bài tự luận.');
+      const raw = await res.text();
+      let result: any = null;
+      try {
+        result = JSON.parse(raw);
+      } catch {
+        // non-JSON
       }
 
-      const result = await res.json();
+      if (!res.ok) {
+        throw new Error(result?.error || raw || 'Lỗi máy chủ khi chấm bài tự luận.');
+      }
+
+      if (!result) {
+        throw new Error('Dữ liệu chấm điểm không hợp lệ. Em hãy thử lại nhé!');
+      }
+
       setEssayGradingResult(result);
       if (result.score >= 8.0) {
         confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 } });
