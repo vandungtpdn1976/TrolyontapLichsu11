@@ -1,13 +1,13 @@
 import { GoogleGenAI } from '@google/genai';
 
 export function getGeminiApiKey(): string {
-  return (
+  const key =
     process.env.GEMINI_API_KEY ||
     process.env.VITE_GEMINI_API_KEY ||
     process.env.GOOGLE_API_KEY ||
     process.env.API_KEY ||
-    ''
-  );
+    '';
+  return key.trim();
 }
 
 export function getGeminiClient(): GoogleGenAI {
@@ -31,6 +31,20 @@ export function setCorsHeaders(res: any) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+}
+
+export function sendJson(res: any, statusCode: number, data: any) {
+  if (typeof res.status === 'function' && typeof res.json === 'function') {
+    return res.status(statusCode).json(data);
+  }
+  if (typeof res.status === 'function') {
+    res.status(statusCode);
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    return res.end(JSON.stringify(data));
+  }
+  res.statusCode = statusCode;
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  return res.end(JSON.stringify(data));
 }
 
 export function parseRequestBody(req: any): any {
@@ -68,7 +82,7 @@ export async function generateContentWithRetryAndFallback(params: {
   config?: any;
 }) {
   const ai = getGeminiClient();
-  const candidateModels = ['gemini-3.8-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite'];
+  const candidateModels = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-flash-latest'];
   let lastError: any = null;
 
   for (const model of candidateModels) {
