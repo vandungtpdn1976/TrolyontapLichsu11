@@ -24,7 +24,7 @@ export default async function handler(req: any, res: any) {
       return res.status(500).json({ error: MISSING_API_KEY_ERROR });
     }
 
-    const body = await parseRequestBody(req);
+    const body = parseRequestBody(req);
     const { topicTitle, lessonName, studentKnowledgeInput, focusLevel } = body;
 
     const inputContext = studentKnowledgeInput?.trim() || '';

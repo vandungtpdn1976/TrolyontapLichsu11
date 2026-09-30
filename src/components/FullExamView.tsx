@@ -371,10 +371,9 @@ export const FullExamView: React.FC<FullExamViewProps> = ({
             topicTitle: part3Question.lessonName,
           }),
         });
-        const raw = await res.text();
         if (res.ok) {
           try {
-            const data = JSON.parse(raw);
+            const data = await res.json();
             setEssayGrading(data);
           } catch (e) {
             console.error('Không thể parse kết quả tự luận:', e);

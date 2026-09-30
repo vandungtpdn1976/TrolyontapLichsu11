@@ -45,7 +45,6 @@ function getGeminiClient(): GoogleGenAI {
       headers: {
         'User-Agent': 'aistudio-build',
       },
-      timeout: 15000,
     },
   });
 }
@@ -88,30 +87,45 @@ function safeJsonParse<T = any>(text: string, fallback: T = {} as T): T {
   }
 }
 
-// Helper: Tự động chuyển đổi mô hình dự phòng nhanh chóng
+// Helper: Tự động thử lại và dự phòng mô hình nếu gặp lỗi 503 (high demand) hoặc 429
 async function generateContentWithRetryAndFallback(params: {
   contents: any;
   config?: any;
 }) {
   const ai = getGeminiClient();
-  // Fast, highly available model first: gemini-3.1-flash-lite (<1s) -> gemini-flash-latest -> gemini-3.8-flash
-  const candidateModels = ['gemini-3.1-flash-lite', 'gemini-flash-latest', 'gemini-3.8-flash'];
+  // Thứ tự ưu tiên các mô hình: gemini-3.8-flash -> gemini-flash-latest -> gemini-3.1-flash-lite
+  const candidateModels = ['gemini-3.8-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite'];
   let lastError: any = null;
 
   for (const model of candidateModels) {
-    try {
-      const response = await ai.models.generateContent({
-        model,
-        contents: params.contents,
-        config: params.config,
-      });
-      if (response && response.text) {
-        return response;
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        const response = await ai.models.generateContent({
+          model,
+          contents: params.contents,
+          config: params.config,
+        });
+        if (response && response.text) {
+          return response;
+        }
+      } catch (err: any) {
+        lastError = err;
+        const errStr = String(err?.message || err);
+        const isTemporary =
+          errStr.includes('503') ||
+          errStr.includes('429') ||
+          errStr.includes('high demand') ||
+          errStr.includes('Resource has been exhausted') ||
+          errStr.includes('temporarily unavailable') ||
+          errStr.includes('overloaded');
+
+        if (isTemporary && attempt === 1) {
+          await delay(1000);
+          continue;
+        }
+        console.warn(`Mô hình ${model} đang bận (${errStr.slice(0, 80)}). Đang chuyển sang mô hình dự phòng...`);
+        break; // Chuyển sang candidateModel tiếp theo
       }
-    } catch (err: any) {
-      lastError = err;
-      const errStr = String(err?.message || err);
-      console.warn(`Mô hình ${model} phản hồi chậm/lỗi (${errStr.slice(0, 80)}). Đang chuyển sang mô hình dự phòng tiếp theo...`);
     }
   }
 
@@ -175,8 +189,8 @@ apiRouter.post('/chat', async (req, res) => {
     const { messages, context, actionType } = req.body;
 
     if (!getGeminiApiKey()) {
-      return res.status(200).json({
-        reply: `Chào em! Hiện tại trên môi trường Vercel chưa được kết nối với biến môi trường **GEMINI_API_KEY**.\n\n👉 **Hướng dẫn kích hoạt Gia sư AI trên Vercel**:\n1. Mở [Vercel Dashboard](https://vercel.com/dashboard) và chọn dự án Sử Vàng 11.\n2. Vào tab **Settings** -> chọn menu **Environment Variables**.\n3. Thêm biến mới: Key là \`GEMINI_API_KEY\` và Value là API Key của bạn từ Google AI Studio.\n4. Bấm **Save**, sau đó sang tab **Deployments** bấm dấu 3 chấm (...) ở bản deploy mới nhất -> chọn **Redeploy** là trò chuyện được ngay nhé!`,
+      return res.status(500).json({
+        error: MISSING_API_KEY_ERROR,
       });
     }
 
@@ -210,9 +224,13 @@ apiRouter.post('/chat', async (req, res) => {
     return res.json({ reply });
   } catch (error: any) {
     console.error('Error in /api/chat:', error);
-    return res.status(200).json({
-      reply:
-        'Thầy Dũng xin chào em! Hệ thống AI đang tạm thời có lượng truy cập lớn trong vài giây. Em hãy bấm nút "🔄 Thử lại câu hỏi này ngay" bên dưới giúp Thầy nhé, hoặc hỏi Thầy về các bài học trọng tâm Lịch sử 11 (Cách mạng tư sản, Chủ nghĩa tư bản, Liên bang Xô Viết, Phong trào Cần vương...)!',
+    const rawError = String(error?.message || '');
+    let cleanMessage = 'Hệ thống máy chủ đang chịu tải cao tạm thời trong vài giây. Em vui lòng bấm "Thử lại câu hỏi này" hoặc gửi lại sau giây lát giúp Thầy nhé!';
+    if (rawError && !rawError.includes('503') && !rawError.includes('high demand') && !rawError.includes('429') && !rawError.includes('{"error"')) {
+      cleanMessage = rawError;
+    }
+    return res.status(500).json({
+      error: cleanMessage,
     });
   }
 });

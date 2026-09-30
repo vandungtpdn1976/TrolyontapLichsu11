@@ -18,7 +18,6 @@ export function getGeminiClient(): GoogleGenAI {
       headers: {
         'User-Agent': 'aistudio-build',
       },
-      timeout: 15000,
     },
   });
 }
@@ -34,37 +33,16 @@ export function setCorsHeaders(res: any) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
 }
 
-export async function parseRequestBody(req: any): Promise<any> {
-  if (req.body) {
-    if (typeof req.body === 'string') {
-      try {
-        return JSON.parse(req.body);
-      } catch {
-        return {};
-      }
+export function parseRequestBody(req: any): any {
+  if (!req.body) return {};
+  if (typeof req.body === 'string') {
+    try {
+      return JSON.parse(req.body);
+    } catch {
+      return {};
     }
-    return req.body;
   }
-
-  // Fallback if req is a stream (e.g. Node HTTP IncomingMessage without pre-parsed body)
-  if (typeof req.on === 'function') {
-    return new Promise((resolve) => {
-      let raw = '';
-      req.on('data', (chunk: any) => {
-        raw += chunk;
-      });
-      req.on('end', () => {
-        try {
-          resolve(raw ? JSON.parse(raw) : {});
-        } catch {
-          resolve({});
-        }
-      });
-      req.on('error', () => resolve({}));
-    });
-  }
-
-  return {};
+  return req.body;
 }
 
 export function safeJsonParse<T = any>(text: string, fallback: T = {} as T): T {
@@ -107,25 +85,38 @@ export async function generateContentWithRetryAndFallback(params: {
   config?: any;
 }) {
   const ai = getGeminiClient();
-  // Fast, highly available model first (gemini-3.1-flash-lite < 1s latency, gemini-flash-latest ~4s)
-  const candidateModels = ['gemini-3.1-flash-lite', 'gemini-flash-latest', 'gemini-3.8-flash'];
+  const candidateModels = ['gemini-3.8-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite'];
   let lastError: any = null;
 
   for (const model of candidateModels) {
-    try {
-      const response = await ai.models.generateContent({
-        model,
-        contents: params.contents,
-        config: params.config,
-      });
-      if (response && response.text) {
-        return response;
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        const response = await ai.models.generateContent({
+          model,
+          contents: params.contents,
+          config: params.config,
+        });
+        if (response && response.text) {
+          return response;
+        }
+      } catch (err: any) {
+        lastError = err;
+        const errStr = String(err?.message || err);
+        const isTemporary =
+          errStr.includes('503') ||
+          errStr.includes('429') ||
+          errStr.includes('high demand') ||
+          errStr.includes('Resource has been exhausted') ||
+          errStr.includes('temporarily unavailable') ||
+          errStr.includes('overloaded');
+
+        if (isTemporary && attempt === 1) {
+          await delay(1000);
+          continue;
+        }
+        console.warn(`Mô hình ${model} đang bận (${errStr.slice(0, 80)}). Chuyển sang mô hình dự phòng...`);
+        break;
       }
-    } catch (err: any) {
-      lastError = err;
-      const errStr = String(err?.message || err);
-      console.warn(`Mô hình ${model} phản hồi chậm/lỗi (${errStr.slice(0, 80)}). Đang chuyển sang mô hình dự phòng tiếp theo...`);
-      // Immediately failover to next candidate model without sleeping
     }
   }
 

@@ -65,17 +65,13 @@ export const SmartStudyView: React.FC<SmartStudyViewProps> = ({ onAskTeacher, on
         body: JSON.stringify({ topicTitle, lessonName }),
       });
 
-      const rawText = await res.text();
-      let data: any = null;
-      try {
-        data = JSON.parse(rawText);
-      } catch {
-        // non-JSON
-      }
-
       if (!res.ok) {
-        let errorMsg = data?.error || '';
-        if (!errorMsg) {
+        let errorMsg = 'Không thể tải dữ liệu ôn tập';
+        try {
+          const errorData = await res.json();
+          errorMsg = errorData.error || errorMsg;
+        } catch {
+          const rawText = await res.text();
           if (rawText.includes('A server error') || rawText.includes('FUNCTION_INVOCATION')) {
             errorMsg =
               'Máy chủ Vercel đang xử lý hoặc chưa cấu hình biến môi trường GEMINI_API_KEY. Vui lòng kiểm tra lại cài đặt Vercel.';
@@ -86,10 +82,7 @@ export const SmartStudyView: React.FC<SmartStudyViewProps> = ({ onAskTeacher, on
         throw new Error(errorMsg);
       }
 
-      if (!data) {
-        throw new Error('Dữ liệu từ máy chủ không hợp lệ. Em hãy bấm tạo lại nhé!');
-      }
-
+      const data: SmartStudyData = await res.json();
       setStudyData(data);
       setUserAnswers({});
       setQuizSubmitted(false);
