@@ -12,7 +12,8 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Enable CORS and preflight handling for all environments (Vercel & AI Studio)
 app.use((req, res, next) => {
@@ -45,7 +46,6 @@ function getGeminiClient(): GoogleGenAI {
       headers: {
         'User-Agent': 'aistudio-build',
       },
-      timeout: 15000,
     },
   });
 }
@@ -55,63 +55,45 @@ const MISSING_API_KEY_ERROR =
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-function safeJsonParse<T = any>(text: string, fallback: T = {} as T): T {
-  if (!text || typeof text !== 'string') return fallback;
-  const trimmed = text.trim();
-  try {
-    return JSON.parse(trimmed);
-  } catch {
-    let cleaned = trimmed.replace(/```(?:json)?/gi, '').replace(/```/g, '').trim();
-    try {
-      return JSON.parse(cleaned);
-    } catch {
-      const firstCurly = cleaned.indexOf('{');
-      const lastCurly = cleaned.lastIndexOf('}');
-      if (firstCurly !== -1 && lastCurly > firstCurly) {
-        try {
-          return JSON.parse(cleaned.substring(firstCurly, lastCurly + 1));
-        } catch {
-          // continue
-        }
-      }
-      const firstSquare = cleaned.indexOf('[');
-      const lastSquare = cleaned.lastIndexOf(']');
-      if (firstSquare !== -1 && lastSquare > firstSquare) {
-        try {
-          return JSON.parse(cleaned.substring(firstSquare, lastSquare + 1));
-        } catch {
-          // continue
-        }
-      }
-      return fallback;
-    }
-  }
-}
-
-// Helper: Tự động chuyển đổi mô hình dự phòng nhanh chóng
+// Helper: Tự động thử lại và dự phòng mô hình nếu gặp lỗi 503 (high demand) hoặc 429
 async function generateContentWithRetryAndFallback(params: {
   contents: any;
   config?: any;
 }) {
   const ai = getGeminiClient();
-  // Fast, highly available model first: gemini-3.1-flash-lite (<1s) -> gemini-flash-latest -> gemini-3.8-flash
-  const candidateModels = ['gemini-3.1-flash-lite', 'gemini-flash-latest', 'gemini-3.8-flash'];
+  // Thứ tự ưu tiên các mô hình: gemini-3.8-flash -> gemini-flash-latest -> gemini-3.1-flash-lite
+  const candidateModels = ['gemini-3.8-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite'];
   let lastError: any = null;
 
   for (const model of candidateModels) {
-    try {
-      const response = await ai.models.generateContent({
-        model,
-        contents: params.contents,
-        config: params.config,
-      });
-      if (response && response.text) {
-        return response;
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        const response = await ai.models.generateContent({
+          model,
+          contents: params.contents,
+          config: params.config,
+        });
+        if (response && response.text) {
+          return response;
+        }
+      } catch (err: any) {
+        lastError = err;
+        const errStr = String(err?.message || err);
+        const isTemporary =
+          errStr.includes('503') ||
+          errStr.includes('429') ||
+          errStr.includes('high demand') ||
+          errStr.includes('Resource has been exhausted') ||
+          errStr.includes('temporarily unavailable') ||
+          errStr.includes('overloaded');
+
+        if (isTemporary && attempt === 1) {
+          await delay(1000);
+          continue;
+        }
+        console.warn(`Mô hình ${model} đang bận (${errStr.slice(0, 80)}). Đang chuyển sang mô hình dự phòng...`);
+        break; // Chuyển sang candidateModel tiếp theo
       }
-    } catch (err: any) {
-      lastError = err;
-      const errStr = String(err?.message || err);
-      console.warn(`Mô hình ${model} phản hồi chậm/lỗi (${errStr.slice(0, 80)}). Đang chuyển sang mô hình dự phòng tiếp theo...`);
     }
   }
 
@@ -150,7 +132,14 @@ CÁC NGUYÊN TẮC BẮT BUỘC KHI TRẢ LỜI TRONG KHUNG CHAT:
 
 5. TRUNG THỰC VÀ BẢO ĐẢM TÍNH SƯ PHẠM:
 - Nếu tài liệu chưa đề cập hoặc không đủ dữ liệu để trả lời, phải nói rõ là tài liệu chưa đề cập, không đoán mò, và chỉ dẫn học sinh xem lại bài nào, trang nào trong SGK.
-- Không đưa trực tiếp đáp án để gian lận thi cử; luôn định hướng phương pháp tư duy để học sinh tự làm chủ kiến thức.`;
+- Không đưa trực tiếp đáp án để gian lận thi cử; luôn định hướng phương pháp tư duy để học sinh tự làm chủ kiến thức.
+
+6. XỬ LÝ HÌNH ẢNH DÁN HOẶC TẢI LÊN (ẢNH ĐỀ THI, TRANG SGK, BẢN ĐỒ, BÀI LÀM VIẾT TAY):
+- Khi học sinh dán ảnh hoặc gửi kèm ảnh (ảnh chụp đề kiểm tra trắc nghiệm 4 lựa chọn, câu hỏi trắc nghiệm Đúng - Sai theo format GDPT 2018, đoạn tư liệu lịch sử, sơ đồ tư duy, niên biểu, bản đồ hoặc bài viết tự luận học sinh chụp lại):
+  + Đọc và nhận diện kỹ toàn bộ văn bản, câu hỏi, các mệnh đề hoặc dữ liệu có trong hình ảnh.
+  + Trả lời cụ thể câu hỏi trong ảnh theo đúng chuẩn kiến thức SGK Lịch sử 11 GDPT 2018 (bộ Kết nối tri thức với cuộc sống).
+  + Nêu rõ đáp án đúng/sai của từng câu/ý, giải thích cặn kẽ bản chất sự kiện lịch sử, nhân vật, mốc thời gian và chỉ ra "từ khóa bẫy" nếu có.
+  + Luôn dùng giọng điệu sư phạm ân cần, khích lệ học sinh.`;
 
 // Tạo apiRouter để phục vụ đồng bộ cả khi có prefix /api hoặc không có prefix (hỗ trợ hoàn hảo Vercel Serverless Function & Express)
 const apiRouter = express.Router();
@@ -169,14 +158,39 @@ apiRouter.get('/health', (_req, res) => {
   });
 });
 
-// API: Chat with Gia sư AI Thầy Dũng
+// Helper: Phân giải ảnh dataUrl thành inlineData cho Gemini
+function formatInlineImagePart(dataUrl: string, fallbackMime = 'image/jpeg') {
+  if (!dataUrl || typeof dataUrl !== 'string') return null;
+  const match = dataUrl.match(/^data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+);base64,(.+)$/s);
+  if (match) {
+    return {
+      inlineData: {
+        mimeType: match[1],
+        data: match[2],
+      },
+    };
+  }
+  if (dataUrl.includes(',')) {
+    const [header, base64] = dataUrl.split(',');
+    const mimeMatch = header.match(/:(.*?);/);
+    return {
+      inlineData: {
+        mimeType: mimeMatch ? mimeMatch[1] : fallbackMime,
+        data: base64,
+      },
+    };
+  }
+  return null;
+}
+
+// API: Chat with Gia sư AI Thầy Dũng (Hỗ trợ đa phương thức: Văn bản & Dán hình ảnh)
 apiRouter.post('/chat', async (req, res) => {
   try {
     const { messages, context, actionType } = req.body;
 
     if (!getGeminiApiKey()) {
-      return res.status(200).json({
-        reply: `Chào em! Hiện tại trên môi trường Vercel chưa được kết nối với biến môi trường **GEMINI_API_KEY**.\n\n👉 **Hướng dẫn kích hoạt Gia sư AI trên Vercel**:\n1. Mở [Vercel Dashboard](https://vercel.com/dashboard) và chọn dự án Sử Vàng 11.\n2. Vào tab **Settings** -> chọn menu **Environment Variables**.\n3. Thêm biến mới: Key là \`GEMINI_API_KEY\` và Value là API Key của bạn từ Google AI Studio.\n4. Bấm **Save**, sau đó sang tab **Deployments** bấm dấu 3 chấm (...) ở bản deploy mới nhất -> chọn **Redeploy** là trò chuyện được ngay nhé!`,
+      return res.status(500).json({
+        error: MISSING_API_KEY_ERROR,
       });
     }
 
@@ -184,11 +198,39 @@ apiRouter.post('/chat', async (req, res) => {
       return res.status(400).json({ error: 'Dữ liệu tin nhắn không hợp lệ.' });
     }
 
-    // Format conversation history for Gemini
-    const contents = messages.map((m: { role: string; content: string }) => ({
-      role: m.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: m.content }],
-    }));
+    // Format conversation history for Gemini (Hỗ trợ cả text và ảnh đính kèm/dán từ clipboard)
+    const contents = messages.map((m: {
+      role: string;
+      content: string;
+      images?: Array<{ dataUrl: string; mimeType?: string; name?: string }>;
+    }) => {
+      const parts: any[] = [];
+
+      // Đưa ảnh vào parts nếu có
+      if (Array.isArray(m.images) && m.images.length > 0) {
+        for (const img of m.images) {
+          const imgPart = formatInlineImagePart(img.dataUrl, img.mimeType);
+          if (imgPart) {
+            parts.push(imgPart);
+          }
+        }
+      }
+
+      // Đưa văn bản vào parts
+      const text = (m.content || '').trim();
+      if (text) {
+        parts.push({ text });
+      } else if (parts.length > 0) {
+        parts.push({ text: 'Thầy hãy phân tích chi tiết hình ảnh đính kèm này và giải đáp đầy đủ cho em theo kiến thức SGK Lịch sử 11 GDPT 2018 nhé!' });
+      } else {
+        parts.push({ text: '...' });
+      }
+
+      return {
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts,
+      };
+    });
 
     let extendedInstruction = SYSTEM_INSTRUCTION_GIA_SU_AI;
     if (context) {
@@ -210,9 +252,13 @@ apiRouter.post('/chat', async (req, res) => {
     return res.json({ reply });
   } catch (error: any) {
     console.error('Error in /api/chat:', error);
-    return res.status(200).json({
-      reply:
-        'Thầy Dũng xin chào em! Hệ thống AI đang tạm thời có lượng truy cập lớn trong vài giây. Em hãy bấm nút "🔄 Thử lại câu hỏi này ngay" bên dưới giúp Thầy nhé, hoặc hỏi Thầy về các bài học trọng tâm Lịch sử 11 (Cách mạng tư sản, Chủ nghĩa tư bản, Liên bang Xô Viết, Phong trào Cần vương...)!',
+    const rawError = String(error?.message || '');
+    let cleanMessage = 'Hệ thống máy chủ đang chịu tải cao tạm thời trong vài giây. Em vui lòng bấm "Thử lại câu hỏi này" hoặc gửi lại sau giây lát giúp Thầy nhé!';
+    if (rawError && !rawError.includes('503') && !rawError.includes('high demand') && !rawError.includes('429') && !rawError.includes('{"error"')) {
+      cleanMessage = rawError;
+    }
+    return res.status(500).json({
+      error: cleanMessage,
     });
   }
 });
@@ -444,10 +490,7 @@ ${
       },
     });
 
-    const parsed = safeJsonParse(response.text || '', {});
-    if (!parsed || Object.keys(parsed).length === 0) {
-      throw new Error('Không thể phân tích kết quả bài tập từ AI. Vui lòng thử lại sau vài giây nhé!');
-    }
+    const parsed = JSON.parse(response.text?.trim() || '{}');
     return res.json(parsed);
   } catch (error: any) {
     console.error('Error in /api/generate-quiz:', error);
@@ -692,10 +735,7 @@ Trả về đúng định dạng JSON thuần túy (không bọc markdown thừa
       },
     });
 
-    const parsed = safeJsonParse(response.text || '', {});
-    if (!parsed || Object.keys(parsed).length === 0) {
-      throw new Error('Không thể phân tích nội dung ôn tập thông minh từ AI. Vui lòng thử lại nhé!');
-    }
+    const parsed = JSON.parse(response.text?.trim() || '{}');
     return res.json(parsed);
   } catch (error: any) {
     console.error('Error in /api/smart-study:', error);

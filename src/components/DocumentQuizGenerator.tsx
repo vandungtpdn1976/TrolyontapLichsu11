@@ -88,6 +88,7 @@ export const DocumentQuizGenerator: React.FC<DocumentQuizGeneratorProps> = ({ on
   const [essayAnswer, setEssayAnswer] = useState('');
   const [isGradingEssay, setIsGradingEssay] = useState(false);
   const [essayGradingResult, setEssayGradingResult] = useState<any>(null);
+  const [essayGradingError, setEssayGradingError] = useState<string | null>(null);
 
   const handleSelectCurated = (doc: typeof CURATED_DOCUMENTS[0]) => {
     setDocumentInput(doc.text);
@@ -187,8 +188,9 @@ export const DocumentQuizGenerator: React.FC<DocumentQuizGeneratorProps> = ({ on
 
   // Grade Essay
   const handleGradeGeneratedEssay = async () => {
+    setEssayGradingError(null);
     if (!essayAnswer.trim() || essayAnswer.trim().length < 15) {
-      alert('Em hãy viết câu trả lời ít nhất 1-2 câu hoàn chỉnh để Thầy chấm điểm nhé!');
+      setEssayGradingError('Em hãy viết câu trả lời ít nhất 1-2 câu hoàn chỉnh để Thầy chấm điểm nhé!');
       return;
     }
 
@@ -226,7 +228,7 @@ export const DocumentQuizGenerator: React.FC<DocumentQuizGeneratorProps> = ({ on
         confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 } });
       }
     } catch (err: any) {
-      alert(err.message || 'Có lỗi khi chấm bài tự luận.');
+      setEssayGradingError(err.message || 'Có lỗi khi chấm bài tự luận.');
     } finally {
       setIsGradingEssay(false);
     }
@@ -770,6 +772,11 @@ export const DocumentQuizGenerator: React.FC<DocumentQuizGeneratorProps> = ({ on
                     </>
                   )}
                 </button>
+                {essayGradingError && (
+                  <p className="mt-2 text-xs text-red-600 bg-red-50 p-2.5 rounded-xl border border-red-200">
+                    {essayGradingError}
+                  </p>
+                )}
               </div>
 
               {/* Grading Result */}

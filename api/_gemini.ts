@@ -18,7 +18,6 @@ export function getGeminiClient(): GoogleGenAI {
       headers: {
         'User-Agent': 'aistudio-build',
       },
-      timeout: 15000,
     },
   });
 }
@@ -34,72 +33,16 @@ export function setCorsHeaders(res: any) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
 }
 
-export async function parseRequestBody(req: any): Promise<any> {
-  if (req.body) {
-    if (typeof req.body === 'string') {
-      try {
-        return JSON.parse(req.body);
-      } catch {
-        return {};
-      }
-    }
-    return req.body;
-  }
-
-  // Fallback if req is a stream (e.g. Node HTTP IncomingMessage without pre-parsed body)
-  if (typeof req.on === 'function') {
-    return new Promise((resolve) => {
-      let raw = '';
-      req.on('data', (chunk: any) => {
-        raw += chunk;
-      });
-      req.on('end', () => {
-        try {
-          resolve(raw ? JSON.parse(raw) : {});
-        } catch {
-          resolve({});
-        }
-      });
-      req.on('error', () => resolve({}));
-    });
-  }
-
-  return {};
-}
-
-export function safeJsonParse<T = any>(text: string, fallback: T = {} as T): T {
-  if (!text || typeof text !== 'string') return fallback;
-  const trimmed = text.trim();
-  try {
-    return JSON.parse(trimmed);
-  } catch {
-    // Strip markdown code fences ```json ... ```
-    let cleaned = trimmed.replace(/```(?:json)?/gi, '').replace(/```/g, '').trim();
+export function parseRequestBody(req: any): any {
+  if (!req.body) return {};
+  if (typeof req.body === 'string') {
     try {
-      return JSON.parse(cleaned);
+      return JSON.parse(req.body);
     } catch {
-      // Find outermost { ... } or [ ... ]
-      const firstCurly = cleaned.indexOf('{');
-      const lastCurly = cleaned.lastIndexOf('}');
-      if (firstCurly !== -1 && lastCurly > firstCurly) {
-        try {
-          return JSON.parse(cleaned.substring(firstCurly, lastCurly + 1));
-        } catch {
-          // continue
-        }
-      }
-      const firstSquare = cleaned.indexOf('[');
-      const lastSquare = cleaned.lastIndexOf(']');
-      if (firstSquare !== -1 && lastSquare > firstSquare) {
-        try {
-          return JSON.parse(cleaned.substring(firstSquare, lastSquare + 1));
-        } catch {
-          // continue
-        }
-      }
-      return fallback;
+      return {};
     }
   }
+  return req.body;
 }
 
 export async function generateContentWithRetryAndFallback(params: {
@@ -107,25 +50,38 @@ export async function generateContentWithRetryAndFallback(params: {
   config?: any;
 }) {
   const ai = getGeminiClient();
-  // Fast, highly available model first (gemini-3.1-flash-lite < 1s latency, gemini-flash-latest ~4s)
-  const candidateModels = ['gemini-3.1-flash-lite', 'gemini-flash-latest', 'gemini-3.8-flash'];
+  const candidateModels = ['gemini-3.8-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite'];
   let lastError: any = null;
 
   for (const model of candidateModels) {
-    try {
-      const response = await ai.models.generateContent({
-        model,
-        contents: params.contents,
-        config: params.config,
-      });
-      if (response && response.text) {
-        return response;
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        const response = await ai.models.generateContent({
+          model,
+          contents: params.contents,
+          config: params.config,
+        });
+        if (response && response.text) {
+          return response;
+        }
+      } catch (err: any) {
+        lastError = err;
+        const errStr = String(err?.message || err);
+        const isTemporary =
+          errStr.includes('503') ||
+          errStr.includes('429') ||
+          errStr.includes('high demand') ||
+          errStr.includes('Resource has been exhausted') ||
+          errStr.includes('temporarily unavailable') ||
+          errStr.includes('overloaded');
+
+        if (isTemporary && attempt === 1) {
+          await delay(1000);
+          continue;
+        }
+        console.warn(`Mô hình ${model} đang bận (${errStr.slice(0, 80)}). Chuyển sang mô hình dự phòng...`);
+        break;
       }
-    } catch (err: any) {
-      lastError = err;
-      const errStr = String(err?.message || err);
-      console.warn(`Mô hình ${model} phản hồi chậm/lỗi (${errStr.slice(0, 80)}). Đang chuyển sang mô hình dự phòng tiếp theo...`);
-      // Immediately failover to next candidate model without sleeping
     }
   }
 
@@ -164,4 +120,35 @@ CÁC NGUYÊN TẮC BẮT BUỘC KHI TRẢ LỜI TRONG KHUNG CHAT:
 
 5. TRUNG THỰC VÀ BẢO ĐẢM TÍNH SƯ PHẠM:
 - Nếu tài liệu chưa đề cập hoặc không đủ dữ liệu để trả lời, phải nói rõ là tài liệu chưa đề cập, không đoán mò, và chỉ dẫn học sinh xem lại bài nào, trang nào trong SGK.
-- Không đưa trực tiếp đáp án để gian lận thi cử; luôn định hướng phương pháp tư duy để học sinh tự làm chủ kiến thức.`;
+- Không đưa trực tiếp đáp án để gian lận thi cử; luôn định hướng phương pháp tư duy để học sinh tự làm chủ kiến thức.
+
+6. XỬ LÝ HÌNH ẢNH DÁN HOẶC TẢI LÊN (ẢNH ĐỀ THI, TRANG SGK, BẢN ĐỒ, BÀI LÀM VIẾT TAY):
+- Khi học sinh dán ảnh hoặc gửi kèm ảnh (ảnh chụp đề kiểm tra trắc nghiệm 4 lựa chọn, câu hỏi trắc nghiệm Đúng - Sai theo format GDPT 2018, đoạn tư liệu lịch sử, sơ đồ tư duy, niên biểu, bản đồ hoặc bài viết tự luận học sinh chụp lại):
+  + Đọc và nhận diện kỹ toàn bộ văn bản, câu hỏi, các mệnh đề hoặc dữ liệu có trong hình ảnh.
+  + Trả lời cụ thể câu hỏi trong ảnh theo đúng chuẩn kiến thức SGK Lịch sử 11 GDPT 2018 (bộ Kết nối tri thức với cuộc sống).
+  + Nêu rõ đáp án đúng/sai của từng câu/ý, giải thích cặn kẽ bản chất sự kiện lịch sử, nhân vật, mốc thời gian và chỉ ra "từ khóa bẫy" nếu có.
+  + Luôn dùng giọng điệu sư phạm ân cần, khích lệ học sinh.`;
+
+export function formatInlineImagePart(dataUrl: string, fallbackMime = 'image/jpeg') {
+  if (!dataUrl || typeof dataUrl !== 'string') return null;
+  const match = dataUrl.match(/^data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+);base64,(.+)$/s);
+  if (match) {
+    return {
+      inlineData: {
+        mimeType: match[1],
+        data: match[2],
+      },
+    };
+  }
+  if (dataUrl.includes(',')) {
+    const [header, base64] = dataUrl.split(',');
+    const mimeMatch = header.match(/:(.*?);/);
+    return {
+      inlineData: {
+        mimeType: mimeMatch ? mimeMatch[1] : fallbackMime,
+        data: base64,
+      },
+    };
+  }
+  return null;
+}
