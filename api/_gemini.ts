@@ -1,14 +1,11 @@
 import { GoogleGenAI } from '@google/genai';
 
 export function getGeminiApiKey(): string {
-  return (
-    process.env.GEMINI_API_KEY ||
-    process.env.VITE_GEMINI_API_KEY ||
-    process.env.GOOGLE_API_KEY ||
-    process.env.API_KEY ||
-    ''
-  );
-}
+ const response = await fetch('/api/chat', {
+  method: 'POST',
+  headers: {'Content-Type': 'application/json'},
+  body: JSON.stringify({ message: prompt })
+});
 
 export function getGeminiClient(): GoogleGenAI {
   const apiKey = getGeminiApiKey();
