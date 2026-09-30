@@ -28,9 +28,8 @@ Thầy sẽ hỗ trợ em ôn tập kiến thức trọng tâm, bám sát **Sác
 Bây giờ, em muốn chúng mình cùng ôn bài nào trong chương trình Lịch sử 11 trước nè? 📖✨`,
       timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
       suggestedQuestions: [
-        'Thầy tạo cho em 1 bài tập Đúng - Sai bám sát tư liệu SGK Lịch sử 11',
-        'Thầy phân tích giúp em đoạn tư liệu Lời dặn Trần Quốc Tuấn: "Khoan thư sức dân"',
-        'Thầy giúp em ôn Bài 1 & Bài 2: Cách mạng tư sản và CNTB hiện đại',
+        'Thầy giúp em ôn Bài 1: Tiền đề và mục tiêu của các cuộc cách mạng tư sản',
+        'Thầy giúp em ôn Bài 2: Sự xác lập và phát triển của chủ nghĩa tư bản',
         'Quá trình thực dân phương Tây xâm lược Đông Nam Á diễn ra như thế nào?',
         'Các mốc thời gian chính phong trào Cần vương (1885 - 1896) chống Pháp',
         'So sánh xu hướng cứu nước của cụ Phan Bội Châu và cụ Phan Châu Trinh',
@@ -87,33 +86,11 @@ Bây giờ, em muốn chúng mình cùng ôn bài nào trong chương trình L�
       });
 
       if (!response.ok) {
-        let serverErrorText = '';
-        try {
-          const errorData = await response.json();
-          serverErrorText = errorData?.error || '';
-        } catch {
-          const rawText = await response.text();
-          if (
-            rawText.includes('A server error') ||
-            rawText.includes('FUNCTION_INVOCATION') ||
-            rawText.includes('500') ||
-            rawText.includes('504')
-          ) {
-            serverErrorText =
-              'Máy chủ Vercel đang xử lý hoặc chưa được thêm biến môi trường GEMINI_API_KEY. Bạn vui lòng vào Vercel Dashboard -> Project Settings -> Environment Variables -> Thêm biến GEMINI_API_KEY rồi Redeploy nhé!';
-          } else {
-            serverErrorText = rawText || `Lỗi máy chủ (${response.status})`;
-          }
-        }
-        throw new Error(serverErrorText || `Lỗi kết nối máy chủ (${response.status})`);
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Lỗi kết nối');
       }
 
-      let data: any = {};
-      try {
-        data = await response.json();
-      } catch {
-        throw new Error('Dữ liệu phản hồi từ máy chủ không đúng định dạng JSON.');
-      }
+      const data = await response.json();
 
       const assistantMsg: ChatMessage = {
         id: 'assistant-' + Date.now(),
@@ -125,21 +102,9 @@ Bây giờ, em muốn chúng mình cùng ôn bài nào trong chương trình L�
       setMessages((prev) => [...prev, assistantMsg]);
     } catch (err: any) {
       console.error(err);
-      const rawError = String(err?.message || '');
-      let friendlyError =
-        'Hệ thống máy chủ đang chịu tải cao tạm thời trong vài giây do lượng truy cập lớn. Em hãy bấm "🔄 Thử lại câu hỏi này ngay" bên dưới giúp Thầy nhé!';
-      if (rawError.includes('GEMINI_API_KEY')) {
-        friendlyError = rawError;
-      } else if (rawError.includes('Unexpected token') || rawError.includes('is not valid JSON')) {
-        friendlyError =
-          'Máy chủ Vercel chưa cấu hình biến môi trường GEMINI_API_KEY trong Project Settings -> Environment Variables. Bạn vui lòng kiểm tra trên Vercel nhé!';
-      } else if (
-        rawError &&
-        !rawError.includes('503') &&
-        !rawError.includes('high demand') &&
-        !rawError.includes('{"error"') &&
-        !rawError.includes('Failed to fetch')
-      ) {
+      const rawError = String(err.message || '');
+      let friendlyError = 'Hệ thống máy chủ đang chịu tải cao tạm thời trong vài giây do lượng truy cập lớn. Em hãy bấm "🔄 Thử lại câu hỏi này ngay" bên dưới giúp Thầy nhé!';
+      if (rawError && !rawError.includes('503') && !rawError.includes('high demand') && !rawError.includes('{"error"') && !rawError.includes('Failed to fetch')) {
         friendlyError = rawError;
       }
       const errorMsg: ChatMessage = {
