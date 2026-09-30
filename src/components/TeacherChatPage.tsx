@@ -28,8 +28,9 @@ Thầy sẽ hỗ trợ em ôn tập kiến thức trọng tâm, bám sát **Sác
 Bây giờ, em muốn chúng mình cùng ôn bài nào trong chương trình Lịch sử 11 trước nè? 📖✨`,
       timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
       suggestedQuestions: [
-        'Thầy giúp em ôn Bài 1: Tiền đề và mục tiêu của các cuộc cách mạng tư sản',
-        'Thầy giúp em ôn Bài 2: Sự xác lập và phát triển của chủ nghĩa tư bản',
+        'Thầy tạo cho em 1 bài tập Đúng - Sai bám sát tư liệu SGK Lịch sử 11',
+        'Thầy phân tích giúp em đoạn tư liệu Lời dặn Trần Quốc Tuấn: "Khoan thư sức dân"',
+        'Thầy giúp em ôn Bài 1 & Bài 2: Cách mạng tư sản và CNTB hiện đại',
         'Quá trình thực dân phương Tây xâm lược Đông Nam Á diễn ra như thế nào?',
         'Các mốc thời gian chính phong trào Cần vương (1885 - 1896) chống Pháp',
         'So sánh xu hướng cứu nước của cụ Phan Bội Châu và cụ Phan Châu Trinh',
@@ -85,27 +86,69 @@ Bây giờ, em muốn chúng mình cùng ôn bài nào trong chương trình L�
         }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Lỗi kết nối');
+      const rawText = await response.text();
+      let data: any = null;
+      try {
+        data = JSON.parse(rawText);
+      } catch {
+        // If not valid JSON (e.g. Vercel HTML or plain text error)
       }
 
-      const data = await response.json();
+      if (!response.ok) {
+        let serverErrorText = data?.error || '';
+        if (!serverErrorText) {
+          if (
+            rawText.includes('FUNCTION_INVOCATION') ||
+            rawText.includes('timeout') ||
+            response.status === 504
+          ) {
+            serverErrorText =
+              'Hệ thống phản hồi lâu hơn dự kiến do mạng. Em bấm nút gửi lại giúp Thầy nhé!';
+          } else if (
+            rawText.includes('A server error') ||
+            rawText.includes('Unexpected token') ||
+            response.status === 500
+          ) {
+            serverErrorText =
+              'Máy chủ Vercel chưa cấu hình biến môi trường GEMINI_API_KEY trong Project Settings -> Environment Variables. Bạn vui lòng vào Vercel Dashboard -> Settings -> Environment Variables -> Thêm GEMINI_API_KEY rồi Redeploy nhé!';
+          } else {
+            serverErrorText = rawText || `Lỗi máy chủ (${response.status})`;
+          }
+        }
+        throw new Error(serverErrorText);
+      }
+
+      const replyText =
+        data?.reply ||
+        (data?.error ? `Lỗi: ${data.error}` : 'Thầy xin lỗi, kết nối bị gián đoạn đôi chút. Em gửi lại câu hỏi giúp Thầy nhé!');
 
       const assistantMsg: ChatMessage = {
         id: 'assistant-' + Date.now(),
         role: 'assistant',
-        content: data.reply || 'Thầy xin lỗi, hiện tại mạng có chút chậm. Em hỏi lại lần nữa nhé!',
+        content: replyText,
         timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
       };
 
       setMessages((prev) => [...prev, assistantMsg]);
     } catch (err: any) {
       console.error(err);
-      const rawError = String(err.message || '');
-      let friendlyError = 'Hệ thống máy chủ đang chịu tải cao tạm thời trong vài giây do lượng truy cập lớn. Em hãy bấm "🔄 Thử lại câu hỏi này ngay" bên dưới giúp Thầy nhé!';
-      if (rawError && !rawError.includes('503') && !rawError.includes('high demand') && !rawError.includes('{"error"') && !rawError.includes('Failed to fetch')) {
-        friendlyError = rawError;
+      const rawError = String(err?.message || '');
+      let friendlyError = rawError;
+      if (
+        rawError.includes('Unexpected token') ||
+        rawError.includes('is not valid JSON') ||
+        rawError.includes('A server e') ||
+        rawError.includes('body stream already read')
+      ) {
+        friendlyError =
+          'Máy chủ Vercel chưa cấu hình biến môi trường GEMINI_API_KEY trong Project Settings -> Environment Variables. Bạn vui lòng vào Vercel Dashboard -> Settings -> Environment Variables -> Thêm GEMINI_API_KEY rồi Redeploy nhé!';
+      } else if (
+        rawError.includes('503') ||
+        rawError.includes('high demand') ||
+        rawError.includes('429')
+      ) {
+        friendlyError =
+          'Hệ thống AI đang tạm thời có lượng truy cập lớn trong vài giây. Em hãy bấm "🔄 Thử lại câu hỏi này ngay" bên dưới giúp Thầy nhé!';
       }
       const errorMsg: ChatMessage = {
         id: 'error-' + Date.now(),

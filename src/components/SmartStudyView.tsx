@@ -65,14 +65,37 @@ export const SmartStudyView: React.FC<SmartStudyViewProps> = ({ onAskTeacher, on
         body: JSON.stringify({ topicTitle, lessonName }),
       });
 
-      if (!res.ok) throw new Error('Không thể tải dữ liệu ôn tập');
-      const data: SmartStudyData = await res.json();
+      const rawText = await res.text();
+      let data: any = null;
+      try {
+        data = JSON.parse(rawText);
+      } catch {
+        // non-JSON
+      }
+
+      if (!res.ok) {
+        let errorMsg = data?.error || '';
+        if (!errorMsg) {
+          if (rawText.includes('A server error') || rawText.includes('FUNCTION_INVOCATION')) {
+            errorMsg =
+              'Máy chủ Vercel đang xử lý hoặc chưa cấu hình biến môi trường GEMINI_API_KEY. Vui lòng kiểm tra lại cài đặt Vercel.';
+          } else {
+            errorMsg = rawText || `Lỗi máy chủ (${res.status})`;
+          }
+        }
+        throw new Error(errorMsg);
+      }
+
+      if (!data) {
+        throw new Error('Dữ liệu từ máy chủ không hợp lệ. Em hãy bấm tạo lại nhé!');
+      }
+
       setStudyData(data);
       setUserAnswers({});
       setQuizSubmitted(false);
     } catch (err: any) {
       console.error(err);
-      alert('Có lỗi khi tạo nội dung ôn tập: ' + err.message);
+      alert('Có lỗi khi tạo nội dung ôn tập: ' + (err.message || 'Lỗi không xác định'));
     } finally {
       setIsGeneratingAI(false);
     }

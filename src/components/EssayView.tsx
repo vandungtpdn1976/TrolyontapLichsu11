@@ -42,12 +42,31 @@ export const EssayView: React.FC<EssayViewProps> = ({ questions, onAskTeacher })
         }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Lỗi khi chấm bài');
+      const rawText = await response.text();
+      let result: any = null;
+      try {
+        result = JSON.parse(rawText);
+      } catch {
+        // non-JSON
       }
 
-      const result: EssayGradingResult = await response.json();
+      if (!response.ok) {
+        let errorMsg = result?.error || '';
+        if (!errorMsg) {
+          if (rawText.includes('A server error') || rawText.includes('FUNCTION_INVOCATION')) {
+            errorMsg =
+              'Máy chủ Vercel đang xử lý hoặc chưa cấu hình biến môi trường GEMINI_API_KEY. Vui lòng kiểm tra lại cài đặt Vercel.';
+          } else {
+            errorMsg = rawText || `Lỗi máy chủ (${response.status})`;
+          }
+        }
+        throw new Error(errorMsg);
+      }
+
+      if (!result) {
+        throw new Error('Dữ liệu chấm điểm không hợp lệ. Em hãy thử lại nhé!');
+      }
+
       setGradingResults((prev) => ({ ...prev, [questionId]: result }));
 
       if (result.score >= 8.0) {

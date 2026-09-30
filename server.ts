@@ -45,6 +45,7 @@ function getGeminiClient(): GoogleGenAI {
       headers: {
         'User-Agent': 'aistudio-build',
       },
+      timeout: 15000,
     },
   });
 }
@@ -54,45 +55,63 @@ const MISSING_API_KEY_ERROR =
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// Helper: Tự động thử lại và dự phòng mô hình nếu gặp lỗi 503 (high demand) hoặc 429
+function safeJsonParse<T = any>(text: string, fallback: T = {} as T): T {
+  if (!text || typeof text !== 'string') return fallback;
+  const trimmed = text.trim();
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    let cleaned = trimmed.replace(/```(?:json)?/gi, '').replace(/```/g, '').trim();
+    try {
+      return JSON.parse(cleaned);
+    } catch {
+      const firstCurly = cleaned.indexOf('{');
+      const lastCurly = cleaned.lastIndexOf('}');
+      if (firstCurly !== -1 && lastCurly > firstCurly) {
+        try {
+          return JSON.parse(cleaned.substring(firstCurly, lastCurly + 1));
+        } catch {
+          // continue
+        }
+      }
+      const firstSquare = cleaned.indexOf('[');
+      const lastSquare = cleaned.lastIndexOf(']');
+      if (firstSquare !== -1 && lastSquare > firstSquare) {
+        try {
+          return JSON.parse(cleaned.substring(firstSquare, lastSquare + 1));
+        } catch {
+          // continue
+        }
+      }
+      return fallback;
+    }
+  }
+}
+
+// Helper: Tự động chuyển đổi mô hình dự phòng nhanh chóng
 async function generateContentWithRetryAndFallback(params: {
   contents: any;
   config?: any;
 }) {
   const ai = getGeminiClient();
-  // Thứ tự ưu tiên các mô hình: gemini-3.8-flash -> gemini-flash-latest -> gemini-3.1-flash-lite
-  const candidateModels = ['gemini-3.8-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite'];
+  // Fast, highly available model first: gemini-3.1-flash-lite (<1s) -> gemini-flash-latest -> gemini-3.8-flash
+  const candidateModels = ['gemini-3.1-flash-lite', 'gemini-flash-latest', 'gemini-3.8-flash'];
   let lastError: any = null;
 
   for (const model of candidateModels) {
-    for (let attempt = 1; attempt <= 2; attempt++) {
-      try {
-        const response = await ai.models.generateContent({
-          model,
-          contents: params.contents,
-          config: params.config,
-        });
-        if (response && response.text) {
-          return response;
-        }
-      } catch (err: any) {
-        lastError = err;
-        const errStr = String(err?.message || err);
-        const isTemporary =
-          errStr.includes('503') ||
-          errStr.includes('429') ||
-          errStr.includes('high demand') ||
-          errStr.includes('Resource has been exhausted') ||
-          errStr.includes('temporarily unavailable') ||
-          errStr.includes('overloaded');
-
-        if (isTemporary && attempt === 1) {
-          await delay(1000);
-          continue;
-        }
-        console.warn(`Mô hình ${model} đang bận (${errStr.slice(0, 80)}). Đang chuyển sang mô hình dự phòng...`);
-        break; // Chuyển sang candidateModel tiếp theo
+    try {
+      const response = await ai.models.generateContent({
+        model,
+        contents: params.contents,
+        config: params.config,
+      });
+      if (response && response.text) {
+        return response;
       }
+    } catch (err: any) {
+      lastError = err;
+      const errStr = String(err?.message || err);
+      console.warn(`Mô hình ${model} phản hồi chậm/lỗi (${errStr.slice(0, 80)}). Đang chuyển sang mô hình dự phòng tiếp theo...`);
     }
   }
 
@@ -110,10 +129,12 @@ CÁC NGUYÊN TẮC BẮT BUỘC KHI TRẢ LỜI TRONG KHUNG CHAT:
 - Tuyệt đối không dùng lời lẽ khiếm nhã, thô lỗ, gay gắt hay mỉa mai học sinh dưới mọi hình thức.
 
 2. TUYỆT ĐỐI BÁM SÁT SÁCH GIÁO KHOA VÀ TÀI LIỆU CUNG CẤP:
-- Chỉ dựa vào 2 nguồn duy nhất:
+- Chỉ dựa vào các nguồn tài liệu chính thức sau:
   + Sách giáo khoa Lịch sử 11 hiện hành của Bộ Giáo dục và Đào tạo (bộ Kết nối tri thức với cuộc sống), Sách giáo viên Lịch sử 11, 3 Chuyên đề học tập Lịch sử 11.
-  + Toàn bộ tài liệu người dùng đã tải lên AI Studio (Đề cương ôn tập giữa kỳ I Lịch sử 11 năm học 2024 - 2025, Bộ Đề + đáp án kiểm tra Lịch sử 11, Đề cương và ma trận ôn tập cuối kỳ I).
-- Không dùng kiến thức lan man bên ngoài hai nguồn này.
+  + Sách Bài tập Lịch sử 11 (Bộ Kết nối tri thức với cuộc sống, Nhà xuất bản Giáo dục Việt Nam, mã số G1BHYS001H23) bao gồm đầy đủ 6 Chủ đề, 13 Bài học, 4 Đề kiểm tra minh họa học kì I và cuối năm, cùng toàn bộ Đáp án và Gợi ý trả lời chi tiết chính thức từ trang 74 đến trang 92.
+  + Toàn bộ tài liệu người dùng đã tải lên AI Studio (Đề cương ôn tập giữa kỳ I Lịch sử 11 năm học 2024 - 2025, Bộ Đề + đáp án kiểm tra Lịch sử 11, Đề cương và ma trận ôn tập cuối kỳ I, Sách bài tập Lịch sử 11).
+- Khi tạo câu hỏi, bài tập hoặc giải đáp, PHẢI bám sát cấu trúc ngữ liệu, câu hỏi trắc nghiệm, câu hỏi Đúng - Sai, đoạn tư liệu lịch sử và thang điểm tự luận của Sách bài tập Lịch sử 11 NXB Giáo dục Việt Nam.
+- Không dùng kiến thức lan man bên ngoài các nguồn này.
 
 3. TUYỆT ĐỐI KHÔNG BỊA ĐẶT THÔNG TIN:
 - Không bịa thông tin, không sáng tác mốc thời gian, không suy diễn sai lệch dữ kiện, nhân vật, sự kiện lịch sử.
@@ -154,8 +175,8 @@ apiRouter.post('/chat', async (req, res) => {
     const { messages, context, actionType } = req.body;
 
     if (!getGeminiApiKey()) {
-      return res.status(500).json({
-        error: MISSING_API_KEY_ERROR,
+      return res.status(200).json({
+        reply: `Chào em! Hiện tại trên môi trường Vercel chưa được kết nối với biến môi trường **GEMINI_API_KEY**.\n\n👉 **Hướng dẫn kích hoạt Gia sư AI trên Vercel**:\n1. Mở [Vercel Dashboard](https://vercel.com/dashboard) và chọn dự án Sử Vàng 11.\n2. Vào tab **Settings** -> chọn menu **Environment Variables**.\n3. Thêm biến mới: Key là \`GEMINI_API_KEY\` và Value là API Key của bạn từ Google AI Studio.\n4. Bấm **Save**, sau đó sang tab **Deployments** bấm dấu 3 chấm (...) ở bản deploy mới nhất -> chọn **Redeploy** là trò chuyện được ngay nhé!`,
       });
     }
 
@@ -189,13 +210,9 @@ apiRouter.post('/chat', async (req, res) => {
     return res.json({ reply });
   } catch (error: any) {
     console.error('Error in /api/chat:', error);
-    const rawError = String(error?.message || '');
-    let cleanMessage = 'Hệ thống máy chủ đang chịu tải cao tạm thời trong vài giây. Em vui lòng bấm "Thử lại câu hỏi này" hoặc gửi lại sau giây lát giúp Thầy nhé!';
-    if (rawError && !rawError.includes('503') && !rawError.includes('high demand') && !rawError.includes('429') && !rawError.includes('{"error"')) {
-      cleanMessage = rawError;
-    }
-    return res.status(500).json({
-      error: cleanMessage,
+    return res.status(200).json({
+      reply:
+        'Thầy Dũng xin chào em! Hệ thống AI đang tạm thời có lượng truy cập lớn trong vài giây. Em hãy bấm nút "🔄 Thử lại câu hỏi này ngay" bên dưới giúp Thầy nhé, hoặc hỏi Thầy về các bài học trọng tâm Lịch sử 11 (Cách mạng tư sản, Chủ nghĩa tư bản, Liên bang Xô Viết, Phong trào Cần vương...)!',
     });
   }
 });
@@ -305,49 +322,115 @@ Yêu cầu trả về đúng định dạng JSON thuần túy (không bọc mã 
   }
 });
 
-// API: Tạo đề luyện tập nhanh theo chủ đề từ AI
+// API: Tạo đề luyện tập bám sát tư liệu từ AI Thầy Dũng
 apiRouter.post('/generate-quiz', async (req, res) => {
   try {
-    const { topic, type } = req.body;
+    const { topic, type, documentText, level } = req.body;
     if (!getGeminiApiKey()) {
       return res.status(500).json({ error: MISSING_API_KEY_ERROR });
     }
 
-    const prompt = `Bạn là Thầy Dũng. Hãy tạo 1 bài luyện tập môn Lịch sử 11 GDPT 2018 về chủ đề: "${topic}".
-Dạng bài yêu cầu: ${type === 'true_false' ? 'Trắc nghiệm Đúng - Sai (1 đoạn tư liệu và 4 ý a, b, c, d)' : type === 'essay' ? 'Tự luận vận dụng' : 'Trắc nghiệm nhiều lựa chọn (3 câu hỏi A, B, C, D)'}.
+    const sourceMaterialInstruction = documentText && documentText.trim().length > 10
+      ? `ĐOẠN TƯ LIỆU DO NGƯỜI DÙNG CUNG CẤP:\n"""\n${documentText.trim()}\n"""\n\nYÊU CẦU ĐẶC BIỆT BẮT BUỘC:\n- BẮT BUỘC BÁM SÁT 100% NỘI DUNG TƯ LIỆU ĐƯỢC GỬI Ở TRÊN.\n- Mọi câu hỏi, các phương án lựa chọn, các nhận định Đúng/Sai và giải thích PHẢI được trích xuất hoặc suy luận trực tiếp từ đoạn tư liệu này.\n- Tuyệt đối không bịa đặt sự kiện, không đưa thông tin ngoài lề không liên quan.`
+      : `CHỦ ĐỀ LỊCH SỬ 11:\n"${topic || 'Cách mạng tư sản và sự phát triển của CNTB'}"\n\nYÊU CẦU: Trích dẫn 1 đoạn tư liệu chuẩn mực từ Sách giáo khoa hoặc Sách bài tập Lịch sử 11 Kết nối tri thức NXBGDVN có ghi rõ nguồn trích, và tạo bài tập bám sát tuyệt đối nội dung tư liệu đó.`;
 
-Trả về kết quả dưới định dạng JSON:
+    const prompt = `Bạn là Thầy Dũng - Chuyên gia luyện thi Lịch sử 11 GDPT 2018.
+Nhiệm vụ: Tạo 1 bài tập lịch sử 11 chất lượng cao, bám sát cấu trúc đề thi mới nhất của Bộ GD&ĐT.
+
+${sourceMaterialInstruction}
+
+Dạng bài yêu cầu: ${
+  type === 'true_false'
+    ? 'Dạng Đúng - Sai theo format mới của Bộ GD&ĐT (gồm 1 đoạn tư liệu chính xác và 4 mệnh đề a, b, c, d để học sinh đánh giá Đúng hoặc Sai)'
+    : type === 'essay'
+    ? 'Dạng Tự luận vận dụng phân tích tư liệu (1 câu hỏi tự luận hay, gợi ý các ý chính, bài làm mẫu và rubric biểu điểm)'
+    : 'Dạng Trắc nghiệm 4 lựa chọn (3 câu hỏi trắc nghiệm A, B, C, D chuyên sâu khai thác tư liệu kèm giải thích chi tiết và phân tích bẫy)'
+}.
+Mức độ nhận thức ưu tiên: ${level || 'Thông hiểu và Vận dụng'}.
+
+Trả về kết quả DUY NHẤT dưới định dạng JSON (không có lời dẫn ngoài markdown JSON):
 ${
   type === 'true_false'
     ? `{
   "type": "true_false",
-  "topic": "${topic}",
-  "passage": "<Đoạn tư liệu lịch sử trích dẫn nguồn uy tín>",
-  "source": "<Nguồn trích dẫn, ví dụ: Đại Việt sử ký toàn thư, SGK Lịch sử 11...>",
+  "topic": "${topic || 'Lịch sử 11'}",
+  "lessonName": "<Tên bài học liên quan>",
+  "title": "<Tiêu đề ngắn gọn về tư liệu>",
+  "passage": "<Nội dung đoạn tư liệu lịch sử được trích dẫn>",
+  "source": "<Nguồn trích dẫn uy tín>",
   "statements": [
-    { "id": "a", "text": "<nhận định a>", "isCorrect": true, "explanation": "<giải thích>" },
-    { "id": "b", "text": "<nhận định b>", "isCorrect": false, "explanation": "<giải thích>" },
-    { "id": "c", "text": "<nhận định c>", "isCorrect": true, "explanation": "<giải thích>" },
-    { "id": "d", "text": "<nhận định d>", "isCorrect": false, "explanation": "<giải thích>" }
-  ]
+    { "id": "a", "text": "<Mệnh đề a>", "isCorrect": true, "explanation": "<Giải thích vì sao đúng dựa vào tư liệu>" },
+    { "id": "b", "text": "<Mệnh đề b>", "isCorrect": false, "explanation": "<Giải thích vì sao sai, chỉ rõ điểm sai so với tư liệu>", "trapTip": "<Điểm bẫy dễ nhầm>" },
+    { "id": "c", "text": "<Mệnh đề c>", "isCorrect": true, "explanation": "<Giải thích vì sao đúng dựa vào tư liệu>" },
+    { "id": "d", "text": "<Mệnh đề d>", "isCorrect": false, "explanation": "<Giải thích vì sao sai>", "trapTip": "<Điểm bẫy dễ nhầm>" }
+  ],
+  "trapAlert": "<Cảnh báo các bẫy thường gặp trong đoạn tư liệu này>",
+  "thayDungAnalysis": "<Lời dặn dò tâm huyết của Thầy Dũng hướng dẫn học sinh phương pháp phân tích tư liệu>"
 }`
     : type === 'essay'
     ? `{
   "type": "essay",
-  "topic": "${topic}",
-  "question": "<Câu hỏi tự luận phân tích/đánh giá/liên hệ>",
-  "guidance": "<Gợi ý các ý chính cần đạt>",
-  "rubric": "<Thang điểm chi tiết>"
+  "topic": "${topic || 'Lịch sử 11'}",
+  "lessonName": "<Tên bài học liên quan>",
+  "title": "<Tiêu đề câu hỏi tự luận>",
+  "passage": "<Đoạn tư liệu làm ngữ liệu phân tích>",
+  "question": "<Câu hỏi tự luận vận dụng bám sát tư liệu>",
+  "guidance": [
+    "<Gợi ý ý chính 1>",
+    "<Gợi ý ý chính 2>",
+    "<Gợi ý ý chính 3>",
+    "<Bài học liên hệ thực tiễn hiện nay>"
+  ],
+  "modelAnswer": "<Bài làm mẫu chuẩn điểm 10 đầy đủ lập luận>",
+  "rubricCriteria": [
+    { "criterion": "<Tiêu chí 1: Khai thác đúng dữ liệu tư liệu>", "maxScore": 0.75 },
+    { "criterion": "<Tiêu chí 2: Phân tích bản chất lịch sử>", "maxScore": 0.75 },
+    { "criterion": "<Tiêu chí 3: Rút ra bài học / liên hệ thực tế>", "maxScore": 0.5 }
+  ]
 }`
     : `{
   "type": "multiple_choice",
-  "topic": "${topic}",
+  "topic": "${topic || 'Lịch sử 11'}",
+  "passage": "<Đoạn tư liệu làm ngữ liệu trích dẫn>",
+  "source": "<Nguồn trích dẫn tư liệu>",
   "questions": [
     {
-      "question": "<Nội dung câu hỏi>",
+      "id": "mc-gen-1",
+      "question": "<Nội dung câu hỏi 1 khai thác tư liệu>",
       "options": ["A. ...", "B. ...", "C. ...", "D. ..."],
       "correctIndex": 0,
-      "explanation": "<Giải thích chi tiết>"
+      "level": "thong_hieu",
+      "explanation": "<Giải thích chi tiết căn cứ vào tư liệu>",
+      "optionsAnalysis": [
+        "A: ĐÚNG - ...",
+        "B: SAI - ...",
+        "C: SAI - ...",
+        "D: SAI - ..."
+      ],
+      "trapTip": "<Bẫy trắc nghiệm cần lưu ý>",
+      "thayDungAdvice": "<Lời khuyên của Thầy Dũng>"
+    },
+    {
+      "id": "mc-gen-2",
+      "question": "<Nội dung câu hỏi 2>",
+      "options": ["A. ...", "B. ...", "C. ...", "D. ..."],
+      "correctIndex": 1,
+      "level": "van_dung",
+      "explanation": "<Giải thích>",
+      "optionsAnalysis": ["A: SAI - ...", "B: ĐÚNG - ...", "C: SAI - ...", "D: SAI - ..."],
+      "trapTip": "<Bẫy>",
+      "thayDungAdvice": "<Lời khuyên>"
+    },
+    {
+      "id": "mc-gen-3",
+      "question": "<Nội dung câu hỏi 3>",
+      "options": ["A. ...", "B. ...", "C. ...", "D. ..."],
+      "correctIndex": 2,
+      "level": "thong_hieu",
+      "explanation": "<Giải thích>",
+      "optionsAnalysis": ["A: SAI - ...", "B: SAI - ...", "C: ĐÚNG - ...", "D: SAI - ..."],
+      "trapTip": "<Bẫy>",
+      "thayDungAdvice": "<Lời khuyên>"
     }
   ]
 }`
@@ -361,7 +444,10 @@ ${
       },
     });
 
-    const parsed = JSON.parse(response.text?.trim() || '{}');
+    const parsed = safeJsonParse(response.text || '', {});
+    if (!parsed || Object.keys(parsed).length === 0) {
+      throw new Error('Không thể phân tích kết quả bài tập từ AI. Vui lòng thử lại sau vài giây nhé!');
+    }
     return res.json(parsed);
   } catch (error: any) {
     console.error('Error in /api/generate-quiz:', error);
@@ -606,7 +692,10 @@ Trả về đúng định dạng JSON thuần túy (không bọc markdown thừa
       },
     });
 
-    const parsed = JSON.parse(response.text?.trim() || '{}');
+    const parsed = safeJsonParse(response.text || '', {});
+    if (!parsed || Object.keys(parsed).length === 0) {
+      throw new Error('Không thể phân tích nội dung ôn tập thông minh từ AI. Vui lòng thử lại nhé!');
+    }
     return res.json(parsed);
   } catch (error: any) {
     console.error('Error in /api/smart-study:', error);
