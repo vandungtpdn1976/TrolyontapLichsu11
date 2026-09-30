@@ -45,6 +45,25 @@ export function parseRequestBody(req: any): any {
   return req.body;
 }
 
+export function safeJsonParse(text: string, fallback: any = {}): any {
+  if (!text || typeof text !== 'string') return fallback;
+  try {
+    const clean = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+    return JSON.parse(clean);
+  } catch {
+    const firstBrace = text.indexOf('{');
+    const lastBrace = text.lastIndexOf('}');
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+      try {
+        return JSON.parse(text.substring(firstBrace, lastBrace + 1));
+      } catch {
+        return fallback;
+      }
+    }
+    return fallback;
+  }
+}
+
 const modelCooldownMap = new Map<string, number>();
 
 export async function generateContentWithRetryAndFallback(params: {
