@@ -6,7 +6,6 @@ import {
   EssayGradingResult,
   ExamMode,
 } from '../types/history';
-import { safeFetchJson } from '../utils/apiHelper';
 import { OFFICIAL_WORKBOOK_EXAMS } from '../data/officialWorkbookExams';
 import {
   Clock,
@@ -372,8 +371,15 @@ export const FullExamView: React.FC<FullExamViewProps> = ({
             topicTitle: part3Question.lessonName,
           }),
         });
-        const data = await safeFetchJson<any>(res, 'Không thể chấm điểm tự luận');
-        setEssayGrading(data);
+        const raw = await res.text();
+        if (res.ok) {
+          try {
+            const data = JSON.parse(raw);
+            setEssayGrading(data);
+          } catch (e) {
+            console.error('Không thể parse kết quả tự luận:', e);
+          }
+        }
       } catch (err) {
         console.error('Lỗi khi chấm tự luận:', err);
       } finally {
