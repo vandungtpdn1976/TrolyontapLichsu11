@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI } from '@google/genai';
+import { getFallbackHistoryAnswer } from './api/_historyFallback.js';
 
 dotenv.config();
 
@@ -192,13 +193,13 @@ apiRouter.get('/health', (_req, res) => {
 
 // API: Chat with Gia sư AI Thầy Dũng
 apiRouter.post('/chat', async (req, res) => {
-  try {
-    const { messages, context, actionType } = req.body;
+  const { messages, context, actionType } = req.body || {};
+  const userMessages = Array.isArray(messages) ? messages.filter((m: any) => m.role === 'user') : [];
+  const lastUserText = userMessages.length > 0 ? userMessages[userMessages.length - 1].content : '';
 
+  try {
     if (!getGeminiApiKey()) {
-      return res.status(500).json({
-        error: MISSING_API_KEY_ERROR,
-      });
+      return res.json({ reply: getFallbackHistoryAnswer(lastUserText) });
     }
 
     if (!messages || !Array.isArray(messages)) {
@@ -227,18 +228,11 @@ apiRouter.post('/chat', async (req, res) => {
       },
     });
 
-    const reply = response.text || 'Thầy xin lỗi, kết nối bị gián đoạn đôi chút. Em gửi lại câu hỏi nhé!';
+    const reply = response.text || getFallbackHistoryAnswer(lastUserText);
     return res.json({ reply });
   } catch (error: any) {
-    console.error('Error in /api/chat:', error);
-    const rawError = String(error?.message || '');
-    let cleanMessage = 'Hệ thống máy chủ đang chịu tải cao tạm thời trong vài giây. Em vui lòng bấm "Thử lại câu hỏi này" hoặc gửi lại sau giây lát giúp Thầy nhé!';
-    if (rawError && !rawError.includes('503') && !rawError.includes('high demand') && !rawError.includes('429') && !rawError.includes('{"error"')) {
-      cleanMessage = rawError;
-    }
-    return res.status(500).json({
-      error: cleanMessage,
-    });
+    console.error('Error in /api/chat, falling back to history knowledge engine:', error);
+    return res.json({ reply: getFallbackHistoryAnswer(lastUserText) });
   }
 });
 

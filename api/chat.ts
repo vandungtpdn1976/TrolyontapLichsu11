@@ -7,6 +7,7 @@ import {
   parseRequestBody,
   sendJson,
 } from './_gemini';
+import { getFallbackHistoryAnswer } from './_historyFallback';
 
 export default async function handler(req: any, res: any) {
   setCorsHeaders(res);
@@ -23,14 +24,18 @@ export default async function handler(req: any, res: any) {
     return sendJson(res, 405, { error: 'Phương thức không được hỗ trợ.' });
   }
 
+  const body = await parseRequestBody(req);
+  const { messages, context, actionType } = body;
+  const userMessages = Array.isArray(messages) ? messages.filter((m: any) => m.role === 'user') : [];
+  const lastUserText = userMessages.length > 0 ? userMessages[userMessages.length - 1].content : '';
+
   try {
     const apiKey = getGeminiApiKey();
     if (!apiKey) {
-      return sendJson(res, 500, { error: MISSING_API_KEY_ERROR });
+      // Nếu chưa có API key trên Vercel, phản hồi ngay bằng kho tri thức Lịch sử 11
+      const fallbackReply = getFallbackHistoryAnswer(lastUserText);
+      return sendJson(res, 200, { reply: fallbackReply });
     }
-
-    const body = await parseRequestBody(req);
-    const { messages, context, actionType } = body;
 
     if (!messages || !Array.isArray(messages)) {
       return sendJson(res, 400, { error: 'Dữ liệu tin nhắn không hợp lệ.' });
@@ -57,22 +62,11 @@ export default async function handler(req: any, res: any) {
       },
     });
 
-    const reply = response.text || 'Thầy xin lỗi, kết nối bị gián đoạn đôi chút. Em gửi lại câu hỏi nhé!';
+    const reply = response.text || getFallbackHistoryAnswer(lastUserText);
     return sendJson(res, 200, { reply });
   } catch (error: any) {
-    console.error('Error in /api/chat:', error);
-    const rawError = String(error?.message || '');
-    let cleanMessage =
-      'Hệ thống máy chủ đang chịu tải cao tạm thời. Em vui lòng bấm "Thử lại câu hỏi này" hoặc gửi lại sau giây lát giúp Thầy nhé!';
-    if (
-      rawError &&
-      !rawError.includes('503') &&
-      !rawError.includes('high demand') &&
-      !rawError.includes('429') &&
-      !rawError.includes('{"error"')
-    ) {
-      cleanMessage = rawError;
-    }
-    return sendJson(res, 500, { error: cleanMessage });
+    console.error('Error in /api/chat, falling back to knowledge engine:', error);
+    const fallbackReply = getFallbackHistoryAnswer(lastUserText);
+    return sendJson(res, 200, { reply: fallbackReply });
   }
 }

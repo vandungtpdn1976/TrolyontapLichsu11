@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, Sparkles, BookOpen, RefreshCw, HelpCircle, Lightbulb, Compass, Award } from 'lucide-react';
 import { ChatMessage } from '../types/history';
 import { safeFetchJson } from '../utils/apiHelper';
+import { generateHistoryAnswer } from '../utils/historyKnowledgeEngine';
 
 interface TeacherChatPageProps {
   initialPrompt?: string;
@@ -98,32 +99,15 @@ Bây giờ, em muốn chúng mình cùng ôn bài nào trong chương trình L�
 
       setMessages((prev) => [...prev, assistantMsg]);
     } catch (err: any) {
-      console.error(err);
-      const rawError = String(err?.message || '');
-      let friendlyError =
-        'Hệ thống máy chủ đang chịu tải cao tạm thời trong vài giây do lượng truy cập lớn. Em hãy bấm "🔄 Thử lại câu hỏi này ngay" bên dưới giúp Thầy nhé!';
-      if (rawError.includes('GEMINI_API_KEY')) {
-        friendlyError = rawError;
-      } else if (rawError.includes('Unexpected token') || rawError.includes('is not valid JSON')) {
-        friendlyError =
-          'Máy chủ Vercel chưa cấu hình biến môi trường GEMINI_API_KEY trong Project Settings -> Environment Variables. Bạn vui lòng kiểm tra trên Vercel nhé!';
-      } else if (
-        rawError &&
-        !rawError.includes('503') &&
-        !rawError.includes('high demand') &&
-        !rawError.includes('{"error"') &&
-        !rawError.includes('Failed to fetch')
-      ) {
-        friendlyError = rawError;
-      }
-      const errorMsg: ChatMessage = {
-        id: 'error-' + Date.now(),
+      console.warn('Backend API chat call encountered issue, providing knowledge engine response:', err);
+      const fallbackResult = generateHistoryAnswer(textToSend);
+      const assistantMsg: ChatMessage = {
+        id: 'assistant-' + Date.now(),
         role: 'assistant',
-        content: `Thầy xin lỗi: ${friendlyError}`,
+        content: fallbackResult.reply,
         timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
-        suggestedQuestions: [textToSend.trim()],
       };
-      setMessages((prev) => [...prev, errorMsg]);
+      setMessages((prev) => [...prev, assistantMsg]);
     } finally {
       setLoading(false);
     }
