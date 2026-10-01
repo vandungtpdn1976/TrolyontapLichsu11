@@ -54,7 +54,7 @@ export default async function handler(req: any, res: any) {
       },
     });
 
-    const reply = response && response.text? response.text: || 'Thầy xin lỗi, kết nối bị gián đoạn đôi chút. Em gửi lại câu hỏi nhé!';
+    const reply = response && response.text ? response.text : 'Thầy xin lỗi, kết nối bị gián đoạn đôi chút. Em gửi lại câu hỏi nhé!';
     return res.status(200).json({ reply });
   } catch (error: any) {
     console.error('Error in /api/chat:', error);

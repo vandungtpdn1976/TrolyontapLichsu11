@@ -4,30 +4,35 @@ import {
   generateContentWithRetryAndFallback,
   setCorsHeaders,
   parseRequestBody,
+  sendJson,
 } from './_gemini';
 
 export default async function handler(req: any, res: any) {
   setCorsHeaders(res);
 
   if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+    if (typeof res.status === 'function') {
+      return res.status(200).end();
+    }
+    res.statusCode = 200;
+    return res.end();
   }
 
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Phương thức không được hỗ trợ.' });
+    return sendJson(res, 405, { error: 'Phương thức không được hỗ trợ.' });
   }
 
   try {
     const apiKey = getGeminiApiKey();
     if (!apiKey) {
-      return res.status(500).json({ error: MISSING_API_KEY_ERROR });
+      return sendJson(res, 500, { error: MISSING_API_KEY_ERROR });
     }
 
     const body = await parseRequestBody(req);
     const { question, rubric, studentAnswer, topicTitle } = body;
 
     if (!studentAnswer || studentAnswer.trim().length < 10) {
-      return res.status(400).json({
+      return sendJson(res, 400, {
         error: 'Bài làm quá ngắn để Thầy Dũng chấm điểm. Em hãy viết chi tiết hơn nhé!',
       });
     }
@@ -87,7 +92,7 @@ Yêu cầu trả về đúng định dạng JSON:
       resultJson = JSON.parse(cleaned);
     }
 
-    return res.status(200).json(resultJson);
+    return sendJson(res, 200, resultJson);
   } catch (error: any) {
     console.error('Error in /api/grade-essay:', error);
     const rawError = String(error?.message || '');
@@ -101,6 +106,6 @@ Yêu cầu trả về đúng định dạng JSON:
     ) {
       cleanMessage = rawError;
     }
-    return res.status(500).json({ error: cleanMessage });
+    return sendJson(res, 500, { error: cleanMessage });
   }
 }

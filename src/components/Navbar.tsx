@@ -1,5 +1,5 @@
-import React from 'react';
-import { BookOpen, CheckSquare, Award, MessageSquare, Compass, Sparkles, Clock } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { BookOpen, CheckSquare, Award, MessageSquare, Compass, Sparkles, Clock, Type, Check, X } from 'lucide-react';
 
 interface NavbarProps {
   activeTab: 'smartStudy' | 'exam' | 'practice' | 'chat' | 'curriculum';
@@ -8,6 +8,53 @@ interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
+  const [showFontMenu, setShowFontMenu] = useState(false);
+  const [selectedFont, setSelectedFont] = useState<'vietnam' | 'lora' | 'inter'>('vietnam');
+  const [fontSizeScale, setFontSizeScale] = useState<number>(100);
+
+  // Initialize and apply typography preferences
+  useEffect(() => {
+    try {
+      const savedFont = localStorage.getItem('suvang_font_pref') as 'vietnam' | 'lora' | 'inter' | null;
+      const savedScale = localStorage.getItem('suvang_fontsize_pref');
+      if (savedFont) {
+        setSelectedFont(savedFont);
+      }
+      if (savedScale) {
+        const num = parseInt(savedScale, 10);
+        if (!isNaN(num) && num >= 90 && num <= 130) {
+          setFontSizeScale(num);
+        }
+      }
+    } catch {
+      // Ignore storage errors in private browsing
+    }
+  }, []);
+
+  // Update styles on document root whenever settings change
+  useEffect(() => {
+    const root = document.documentElement;
+    const body = document.body;
+
+    // Apply font family
+    let fontFamily = "'Be Vietnam Pro', system-ui, -apple-system, sans-serif";
+    if (selectedFont === 'lora') {
+      fontFamily = "'Lora', 'Be Vietnam Pro', Georgia, serif";
+    } else if (selectedFont === 'inter') {
+      fontFamily = "'Inter', 'Be Vietnam Pro', system-ui, sans-serif";
+    }
+
+    body.style.fontFamily = fontFamily;
+    root.style.fontFamily = fontFamily;
+    root.style.fontSize = `${fontSizeScale}%`;
+
+    try {
+      localStorage.setItem('suvang_font_pref', selectedFont);
+      localStorage.setItem('suvang_fontsize_pref', String(fontSizeScale));
+    } catch {
+      // Ignore
+    }
+  }, [selectedFont, fontSizeScale]);
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-amber-200/60 shadow-xs">
       {/* Top golden announcement bar */}
@@ -109,8 +156,134 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
             </button>
           </nav>
 
-          {/* Quick AI Advisor CTA */}
-          <div className="flex items-center gap-2">
+          {/* Actions: Font settings & Quick AI Advisor CTA */}
+          <div className="flex items-center gap-2 relative">
+            {/* Vietnamese Font Selector Toggle */}
+            <div className="relative">
+              <button
+                onClick={() => setShowFontMenu(!showFontMenu)}
+                className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl text-xs sm:text-sm font-medium border transition-all ${
+                  showFontMenu
+                    ? 'bg-amber-100 text-amber-900 border-amber-400 shadow-inner'
+                    : 'bg-stone-50 hover:bg-stone-100 text-stone-700 border-stone-300 shadow-xs'
+                }`}
+                title="Tùy chỉnh phông chữ Tiếng Việt & Cỡ chữ"
+                aria-label="Cài đặt phông chữ Tiếng Việt"
+              >
+                <Type className="w-4 h-4 text-amber-700" />
+                <span className="hidden sm:inline font-semibold">Phông chữ</span>
+              </button>
+
+              {/* Dropdown Menu */}
+              {showFontMenu && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setShowFontMenu(false)}
+                  />
+                  <div className="absolute right-0 mt-2 w-72 sm:w-80 bg-white rounded-2xl shadow-2xl border border-stone-200 p-4 z-50 animate-in fade-in zoom-in-95 duration-150">
+                    <div className="flex items-center justify-between pb-3 border-b border-stone-100 mb-3">
+                      <div className="flex items-center gap-2">
+                        <Type className="w-4 h-4 text-amber-700" />
+                        <h4 className="font-bold text-stone-900 text-sm">Phông chữ Tiếng Việt</h4>
+                      </div>
+                      <button
+                        onClick={() => setShowFontMenu(false)}
+                        className="p-1 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-100"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    {/* Font Family selection */}
+                    <div className="space-y-1.5 mb-4">
+                      <p className="text-[11px] font-bold text-stone-400 uppercase tracking-wider mb-2">
+                        Kiểu chữ hiển thị
+                      </p>
+                      
+                      <button
+                        onClick={() => setSelectedFont('vietnam')}
+                        className={`w-full text-left p-2.5 rounded-xl border transition flex items-center justify-between ${
+                          selectedFont === 'vietnam'
+                            ? 'bg-amber-50/80 border-amber-500 text-amber-950 font-semibold'
+                            : 'border-stone-200 hover:bg-stone-50 text-stone-700'
+                        }`}
+                      >
+                        <div>
+                          <div className="text-sm font-vietnam-pro font-medium">Be Vietnam Pro</div>
+                          <div className="text-[11px] text-stone-500">Chuẩn Tiếng Việt hiện đại, dấu thanh sắc nét (Khuyên dùng)</div>
+                        </div>
+                        {selectedFont === 'vietnam' && <Check className="w-4 h-4 text-amber-700 shrink-0 ml-2" />}
+                      </button>
+
+                      <button
+                        onClick={() => setSelectedFont('lora')}
+                        className={`w-full text-left p-2.5 rounded-xl border transition flex items-center justify-between ${
+                          selectedFont === 'lora'
+                            ? 'bg-amber-50/80 border-amber-500 text-amber-950 font-semibold'
+                            : 'border-stone-200 hover:bg-stone-50 text-stone-700'
+                        }`}
+                      >
+                        <div>
+                          <div className="text-sm font-serif font-medium">Lora Serif</div>
+                          <div className="text-[11px] text-stone-500">Chữ có chân trang trọng, phong cách sách tư liệu lịch sử</div>
+                        </div>
+                        {selectedFont === 'lora' && <Check className="w-4 h-4 text-amber-700 shrink-0 ml-2" />}
+                      </button>
+
+                      <button
+                        onClick={() => setSelectedFont('inter')}
+                        className={`w-full text-left p-2.5 rounded-xl border transition flex items-center justify-between ${
+                          selectedFont === 'inter'
+                            ? 'bg-amber-50/80 border-amber-500 text-amber-950 font-semibold'
+                            : 'border-stone-200 hover:bg-stone-50 text-stone-700'
+                        }`}
+                      >
+                        <div>
+                          <div className="text-sm font-sans font-medium">Inter</div>
+                          <div className="text-[11px] text-stone-500">Hiện đại, tối giản và trực quan</div>
+                        </div>
+                        {selectedFont === 'inter' && <Check className="w-4 h-4 text-amber-700 shrink-0 ml-2" />}
+                      </button>
+                    </div>
+
+                    {/* Font Scale Selection */}
+                    <div>
+                      <p className="text-[11px] font-bold text-stone-400 uppercase tracking-wider mb-2">
+                        Cỡ chữ đọc bài
+                      </p>
+                      <div className="grid grid-cols-3 gap-2">
+                        {[
+                          { scale: 100, label: 'Tiêu chuẩn', desc: '100%' },
+                          { scale: 108, label: 'Rõ nét', desc: '108%' },
+                          { scale: 116, label: 'Lớn', desc: '116%' },
+                        ].map((item) => (
+                          <button
+                            key={item.scale}
+                            onClick={() => setFontSizeScale(item.scale)}
+                            className={`py-2 px-1 text-center rounded-xl border transition ${
+                              fontSizeScale === item.scale
+                                ? 'bg-amber-600 text-white border-amber-600 font-bold shadow-xs'
+                                : 'bg-stone-50 hover:bg-stone-100 text-stone-700 border-stone-200 text-xs'
+                            }`}
+                          >
+                            <span className="block text-xs">{item.label}</span>
+                            <span className="block text-[10px] opacity-80">{item.desc}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="mt-3 pt-2 border-t border-stone-100 text-center">
+                      <span className="text-[11px] text-stone-400">
+                        Áp dụng toàn bộ ứng dụng Sử Vàng 11
+                      </span>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
             <button
               onClick={() => setActiveTab('chat')}
               className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white font-medium text-xs sm:text-sm shadow-sm hover:shadow-md transition-all"

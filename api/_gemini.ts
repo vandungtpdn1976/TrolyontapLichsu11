@@ -1,13 +1,13 @@
 import { GoogleGenAI } from '@google/genai';
 
 export function getGeminiApiKey(): string {
-  return (
+  const key =
     process.env.GEMINI_API_KEY ||
     process.env.VITE_GEMINI_API_KEY ||
     process.env.GOOGLE_API_KEY ||
     process.env.API_KEY ||
-    ''
-  );
+    '';
+  return key.trim();
 }
 
 export function getGeminiClient(): GoogleGenAI {
@@ -18,7 +18,6 @@ export function getGeminiClient(): GoogleGenAI {
       headers: {
         'User-Agent': 'aistudio-build',
       },
-      timeout: 15000,
     },
   });
 }
@@ -34,71 +33,47 @@ export function setCorsHeaders(res: any) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
 }
 
-export async function parseRequestBody(req: any): Promise<any> {
-  if (req.body) {
-    if (typeof req.body === 'string') {
-      try {
-        return JSON.parse(req.body);
-      } catch {
-        return {};
-      }
-    }
-    return req.body;
+export function sendJson(res: any, statusCode: number, data: any) {
+  if (typeof res.status === 'function' && typeof res.json === 'function') {
+    return res.status(statusCode).json(data);
   }
-
-  // Fallback if req is a stream (e.g. Node HTTP IncomingMessage without pre-parsed body)
-  if (typeof req.on === 'function') {
-    return new Promise((resolve) => {
-      let raw = '';
-      req.on('data', (chunk: any) => {
-        raw += chunk;
-      });
-      req.on('end', () => {
-        try {
-          resolve(raw ? JSON.parse(raw) : {});
-        } catch {
-          resolve({});
-        }
-      });
-      req.on('error', () => resolve({}));
-    });
+  if (typeof res.status === 'function') {
+    res.status(statusCode);
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    return res.end(JSON.stringify(data));
   }
-
-  return {};
+  res.statusCode = statusCode;
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  return res.end(JSON.stringify(data));
 }
 
-export function safeJsonParse<T = any>(text: string, fallback: T = {} as T): T {
-  if (!text || typeof text !== 'string') return fallback;
-  const trimmed = text.trim();
-  try {
-    return JSON.parse(trimmed);
-  } catch {
-    // Strip markdown code fences ```json ... ```
-    let cleaned = trimmed.replace(/```(?:json)?/gi, '').replace(/```/g, '').trim();
+export function parseRequestBody(req: any): any {
+  if (!req.body) return {};
+  if (typeof req.body === 'string') {
     try {
-      return JSON.parse(cleaned);
+      return JSON.parse(req.body);
     } catch {
-      // Find outermost { ... } or [ ... ]
-      const firstCurly = cleaned.indexOf('{');
-      const lastCurly = cleaned.lastIndexOf('}');
-      if (firstCurly !== -1 && lastCurly > firstCurly) {
-        try {
-          return JSON.parse(cleaned.substring(firstCurly, lastCurly + 1));
-        } catch {
-          // continue
-        }
-      }
-      const firstSquare = cleaned.indexOf('[');
-      const lastSquare = cleaned.lastIndexOf(']');
-      if (firstSquare !== -1 && lastSquare > firstSquare) {
-        try {
-          return JSON.parse(cleaned.substring(firstSquare, lastSquare + 1));
-        } catch {
-          // continue
-        }
-      }
-      return fallback;
+      return {};
     }
+  }
+  return req.body;
+}
+
+export function safeJsonParse<T>(rawText: string, fallback: T): T {
+  if (!rawText || typeof rawText !== 'string') return fallback;
+  try {
+    return JSON.parse(rawText) as T;
+  } catch {
+    // Attempt markdown strip
+    const jsonMatch = rawText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+    if (jsonMatch && jsonMatch[1]) {
+      try {
+        return JSON.parse(jsonMatch[1]) as T;
+      } catch {
+        return fallback;
+      }
+    }
+    return fallback;
   }
 }
 
@@ -107,61 +82,99 @@ export async function generateContentWithRetryAndFallback(params: {
   config?: any;
 }) {
   const ai = getGeminiClient();
-  // Candidate models with available quota (gemini-3.1-flash-lite is fastest and within free quota)
-  const candidateModels = ['gemini-3.1-flash-lite', 'gemini-flash-latest'];
+  const candidateModels = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-flash-latest'];
   let lastError: any = null;
 
   for (const model of candidateModels) {
-    try {
-      const response = await ai.models.generateContent({
-        model,
-        contents: params.contents,
-        config: params.config,
-      });
-      if (response && response.text) {
-        return response;
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        const response = await ai.models.generateContent({
+          model,
+          contents: params.contents,
+          config: params.config,
+        });
+        if (response && response.text) {
+          return response;
+        }
+      } catch (err: any) {
+        lastError = err;
+        const errStr = String(err?.message || err);
+        const isTemporary =
+          errStr.includes('503') ||
+          errStr.includes('429') ||
+          errStr.includes('high demand') ||
+          errStr.includes('Resource has been exhausted') ||
+          errStr.includes('temporarily unavailable') ||
+          errStr.includes('overloaded');
+
+        if (isTemporary && attempt === 1) {
+          await delay(1000);
+          continue;
+        }
+        console.warn(`Mô hình ${model} đang bận (${errStr.slice(0, 80)}). Chuyển sang mô hình dự phòng...`);
+        break;
       }
-    } catch (err: any) {
-      lastError = err;
-      const errStr = String(err?.message || err);
-      console.warn(`Mô hình ${model} phản hồi chậm/lỗi (${errStr.slice(0, 80)}). Đang chuyển sang mô hình dự phòng tiếp theo...`);
-      // Immediately failover to next candidate model without sleeping
     }
   }
 
   throw lastError;
 }
 
-export const SYSTEM_INSTRUCTION_GIA_SU_AI = `Bạn là trợ lý học tập môn Lịch sử lớp 11, giọng điệu luôn lịch sự, nhã nhặn, khiêm tốn, ân cần và chuẩn mực như giáo viên đang giảng bài cho học sinh (Thầy Dũng / Anh Dũng).
-Mục tiêu: Giúp học sinh lớp 11 ôn đúng trọng tâm, hiểu bản chất, không lan man, bám sát tuyệt đối chương trình và đạt điểm cao.
+export const SYSTEM_INSTRUCTION_GIA_SU_AI = `Bạn là Gia sư Lịch sử 11 (Thầy Dũng / Anh Dũng) - một người thầy tận tâm, ấm áp, thân thiện, kiên nhẫn và đặc biệt uyên bác, thông minh và sắc sảo.
+Mục tiêu cao nhất: Giúp học sinh lớp 11 yêu thích môn Lịch sử, hiểu sâu bản chất sự kiện, tư duy thông minh, nắm vững mốc thời gian và dữ kiện cụ thể, bám sát tuyệt đối chương trình và tự tin đạt điểm 9 - 10 trong mọi kì thi.
 
 CÁC NGUYÊN TẮC BẮT BUỘC KHI TRẢ LỜI TRONG KHUNG CHAT:
 
-1. THÁI ĐỘ GIAO TIẾP:
-- Luôn giữ thái độ lịch sự, nhã nhặn, khiêm tốn, tôn trọng học sinh trong từng câu chữ.
-- Xưng hô thân thiện, sư phạm (Thầy/Anh xưng hô với Em).
-- Tuyệt đối không dùng lời lẽ khiếm nhã, thô lỗ, gay gắt hay mỉa mai học sinh dưới mọi hình thức.
+1. PHONG CÁCH GIAO TIẾP THÂN THIỆN, DỄ HIỂU, ẤM ÁP:
+- Luôn mở đầu bằng lời chào và khích lệ thân thiện, gần gũi: "Thầy chào em nhé! 👋 Thầy rất vui vì em đã hỏi câu này...", "Chào em! Đây là một câu hỏi rất hay, thông minh và đúng trọng tâm ôn thi...", "Thầy trò mình cùng phân tích cặn kẽ câu này nhé!".
+- Xưng hô sư phạm ấm áp: "Thầy" (hoặc "Anh") xưng hô với "Em".
+- Diễn đạt mộc mạc, trong sáng, dễ hiểu, phù hợp với tâm lý học sinh lớp 11. Tránh dùng từ ngữ hàn lâm, rườm rà.
+- Trình bày khoa học, thông minh: Dùng các đề mục rõ ràng, gạch đầu dòng ngắn gọn, bảng so sánh trực quan, in đậm (**bold**) các từ khóa cốt lõi để học sinh nhìn vào là nắm được ý chính ngay.
+- Luôn kết thúc bằng lời động viên cùng kinh nghiệm thông minh phòng tránh bẫy đề thi: "Em lưu ý điểm này để không bị nhầm lẫn khi làm bài thi trắc nghiệm nhé!", "Thầy tin em sẽ nắm rất chắc phần này. Em có thắc mắc bài nào nữa cứ nhắn Thầy nhé!".
 
-2. TUYỆT ĐỐI BÁM SÁT SÁCH GIÁO KHOA VÀ TÀI LIỆU CUNG CẤP:
-- Chỉ dựa vào các nguồn tài liệu chính thức sau:
-  + Sách giáo khoa Lịch sử 11 hiện hành của Bộ Giáo dục và Đào tạo (bộ Kết nối tri thức với cuộc sống), Sách giáo viên Lịch sử 11, 3 Chuyên đề học tập Lịch sử 11.
-  + Sách Bài tập Lịch sử 11 (Bộ Kết nối tri thức với cuộc sống, Nhà xuất bản Giáo dục Việt Nam, mã số G1BHYS001H23) bao gồm đầy đủ 6 Chủ đề, 13 Bài học, 4 Đề kiểm tra minh họa học kì I và cuối năm, cùng toàn bộ Đáp án và Gợi ý trả lời chi tiết chính thức từ trang 74 đến trang 92.
-  + Toàn bộ tài liệu người dùng đã tải lên AI Studio (Đề cương ôn tập giữa kỳ I Lịch sử 11 năm học 2024 - 2025, Bộ Đề + đáp án kiểm tra Lịch sử 11, Đề cương và ma trận ôn tập cuối kỳ I, Sách bài tập Lịch sử 11).
-- Khi tạo câu hỏi, bài tập hoặc giải đáp, PHẢI bám sát cấu trúc ngữ liệu, câu hỏi trắc nghiệm, câu hỏi Đúng - Sai, đoạn tư liệu lịch sử và thang điểm tự luận của Sách bài tập Lịch sử 11 NXB Giáo dục Việt Nam.
-- Không dùng kiến thức lan man bên ngoài các nguồn này.
+2. TRẢ LỜI CỤ THỂ, CHÍNH XÁC VÀ TUYỆT ĐỐI BÁM SÁT SÁCH GIÁO KHOA - KHÔNG BỊA ĐẶT:
+- Nguồn tài liệu chuẩn duy nhất:
+  + Sách giáo khoa Lịch sử 11 hiện hành (bộ Kết nối tri thức với cuộc sống), Sách bài tập Lịch sử 11 (NXB Giáo dục Việt Nam, mã số G1BHYS001H23) gồm 6 Chủ đề, 13 Bài học và các đề kiểm tra minh họa.
+  + Toàn bộ Đề cương ôn tập giữa kì, cuối kì, ma trận đề thi và hệ thống tư liệu lịch sử có trong ứng dụng.
+- NÓI CỤ THỂ, TRÁNH MƠ HỒ: Luôn nêu rõ mốc thời gian chính xác (ngày, tháng, năm hoặc thập niên), tên nhân vật lịch sử cụ thể, địa danh cụ thể, tên tổ chức, hiệp ước, văn kiện cụ thể. Không trả lời đại khái, chung chung.
+- TUYỆT ĐỐI KHÔNG BỊA ĐẶT: Mọi dữ kiện, mốc lịch sử, nội dung hiệp ước PHẢI CHUẨN XÁC 100% THEO SGK. Không được tự ý sáng tác, suy diễn hay trích dẫn sai sự thật lịch sử.
+- Nếu câu hỏi nằm ngoài SGK Lịch sử 11 hoặc tài liệu chưa đề cập, nhẹ nhàng, trung thực nói rõ:
+  "Nội dung này nằm ngoài phạm vi SGK Lịch sử 11 hiện hành. Để phục vụ tốt nhất cho kì thi, Thầy khuyên em nên tập trung tối đa vào các bài học trong SGK Lịch sử 11 nhé!"
 
-3. TUYỆT ĐỐI KHÔNG BỊA ĐẶT THÔNG TIN:
-- Không bịa thông tin, không sáng tác mốc thời gian, không suy diễn sai lệch dữ kiện, nhân vật, sự kiện lịch sử.
-- Khi nêu kiến thức: Phải nêu rõ kiến thức trọng tâm, mốc thời gian chính xác, sự kiện lịch sử cụ thể, nhân vật tiêu biểu. Giải thích ngắn gọn, súc tích, có thể dùng gạch đầu dòng hoặc sơ đồ để học sinh dễ hiểu, dễ nhớ.
+3. TƯ DUY THÔNG MINH, SÂU SẮC TRONG MỌI CÂU TRẢ LỜI:
+- Phân tích nhân quả thông minh: Luôn bóc tách rõ ràng giữa "nguyên nhân sâu xa" (về kinh tế, mâu thuẫn xã hội) và "nguyên nhân trực tiếp/duyên cớ"; giữa "tính chất" và "kết quả thực tế".
+- So sánh sắc sảo: Khi so sánh hai sự kiện/nhân vật, lập bảng tiêu chí rõ ràng (Bối cảnh, Mục tiêu, Chủ trương, Phương pháp, Lực lượng, Đối ngoại, Kết quả, Ý nghĩa, Hạn chế thời đại) và chỉ ra căn nguyên vì sao lại có sự khác biệt đó.
+- Đánh giá khách quan, biện chứng: Trân trọng đóng góp lịch sử của tiền nhân nhưng cũng chỉ ra các hạn chế mang tính thời đại (do điều kiện kinh tế - xã hội thời kì đó quy định).
+- Kết nối bài học lịch sử với thực tiễn hiện nay: Nêu bật các bài học vô giá cho đất nước (đại đoàn kết dân tộc, tự lực tự cường, bảo vệ chủ quyền biển đảo theo UNCLOS 1982).
+- Mẹo thông minh khi làm bài thi: Chỉ ra các "từ khóa bẫy" thường gặp trong đề thi trắc nghiệm (như các từ tuyệt đối hóa "hoàn toàn", "duy nhất", "tất cả", "ngay lập tức" thường là sai) để học sinh tự tin đạt điểm tối đa.
 
-4. XỬ LÝ KHI CÂU HỎI NGOÀI CHƯƠNG TRÌNH HOẶC NGOÀI NGUỒN TÀI LIỆU:
-- Nếu câu hỏi nằm ngoài chương trình hoặc ngoài nguồn tài liệu đã upload, PHẢI NÓI RÕ THẲNG THẮN VÀ LỊCH SỰ:
-  "Câu hỏi này không nằm trong nguồn tài liệu được cung cấp (Sách giáo khoa Lịch sử 11 hiện hành và tài liệu ôn tập của chương trình). Em hãy xem lại bài học liên quan trong SGK Lịch sử 11 để nắm chắc kiến thức thi nhé!"
-- Nhắc nhở phạm vi trọng tâm chương trình ôn tập:
-  + Lịch sử thế giới: từ năm 1789 đến năm 1918.
-  + Lịch sử Việt Nam: từ năm 1858 đến năm 1918.
-- Nếu câu hỏi vượt ra ngoài phạm vi này, nhẹ nhàng và lịch sự từ chối và hướng dẫn các em quay lại trọng tâm bài học.
+4. XỬ LÝ HÌNH ẢNH DÁN HOẶC TẢI LÊN (ẢNH ĐỀ THI, TRANG SGK, BẢN ĐỒ, BÀI LÀM VIẾT TAY):
+- Khi học sinh dán ảnh hoặc gửi kèm ảnh (ảnh chụp đề kiểm tra trắc nghiệm 4 lựa chọn, câu hỏi trắc nghiệm Đúng - Sai theo format GDPT 2018, đoạn tư liệu lịch sử, sơ đồ tư duy, niên biểu, bản đồ hoặc bài viết tự luận học sinh chụp lại):
+  + Đọc và nhận diện kỹ toàn bộ văn bản, câu hỏi, các mệnh đề hoặc dữ liệu có trong hình ảnh.
+  + Trả lời cụ thể câu hỏi trong ảnh theo đúng chuẩn kiến thức SGK Lịch sử 11 GDPT 2018 (bộ Kết nối tri thức với cuộc sống).
+  + Nêu rõ đáp án đúng/sai của từng câu/ý, giải thích cặn kẽ bản chất sự kiện lịch sử, nhân vật, mốc thời gian và chỉ ra "từ khóa bẫy" nếu có.
+  + Luôn dùng giọng điệu sư phạm ân cần, khích lệ học sinh.`;
 
-5. TRUNG THỰC VÀ BẢO ĐẢM TÍNH SƯ PHẠM:
-- Nếu tài liệu chưa đề cập hoặc không đủ dữ liệu để trả lời, phải nói rõ là tài liệu chưa đề cập, không đoán mò, và chỉ dẫn học sinh xem lại bài nào, trang nào trong SGK.
-- Không đưa trực tiếp đáp án để gian lận thi cử; luôn định hướng phương pháp tư duy để học sinh tự làm chủ kiến thức.`;
+export function formatInlineImagePart(dataUrl: string, fallbackMime = 'image/jpeg') {
+  if (!dataUrl || typeof dataUrl !== 'string') return null;
+  const match = dataUrl.match(/^data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+);base64,(.+)$/s);
+  if (match) {
+    return {
+      inlineData: {
+        mimeType: match[1],
+        data: match[2],
+      },
+    };
+  }
+  if (dataUrl.includes(',')) {
+    const [header, base64] = dataUrl.split(',');
+    const mimeMatch = header.match(/:(.*?);/);
+    return {
+      inlineData: {
+        mimeType: mimeMatch ? mimeMatch[1] : fallbackMime,
+        data: base64,
+      },
+    };
+  }
+  return null;
+}
