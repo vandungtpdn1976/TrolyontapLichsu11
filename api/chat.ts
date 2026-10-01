@@ -5,40 +5,32 @@ import {
   generateContentWithRetryAndFallback,
   setCorsHeaders,
   parseRequestBody,
-  sendJson,
-} from './_gemini';
-import { getFallbackHistoryAnswer } from './_historyFallback';
+} from './_gemini.js';
 
 export default async function handler(req: any, res: any) {
   setCorsHeaders(res);
 
   if (req.method === 'OPTIONS') {
-    if (typeof res.status === 'function') {
-      return res.status(200).end();
-    }
-    res.statusCode = 200;
-    return res.end();
+    return res.status(200).end();
   }
 
   if (req.method !== 'POST') {
-    return sendJson(res, 405, { error: 'Phương thức không được hỗ trợ.' });
+    return res.status(405).json({ error: 'Phương thức không được hỗ trợ.' });
   }
-
-  const body = await parseRequestBody(req);
-  const { messages, context, actionType } = body;
-  const userMessages = Array.isArray(messages) ? messages.filter((m: any) => m.role === 'user') : [];
-  const lastUserText = userMessages.length > 0 ? userMessages[userMessages.length - 1].content : '';
 
   try {
     const apiKey = getGeminiApiKey();
     if (!apiKey) {
-      // Nếu chưa có API key trên Vercel, phản hồi ngay bằng kho tri thức Lịch sử 11
-      const fallbackReply = getFallbackHistoryAnswer(lastUserText);
-      return sendJson(res, 200, { reply: fallbackReply });
+      return res.status(200).json({
+        reply: `Chào em! Hiện tại trên môi trường Vercel chưa được kết nối với biến môi trường **GEMINI_API_KEY**.\n\n👉 **Hướng dẫn kích hoạt Gia sư AI trên Vercel**:\n1. Mở [Vercel Dashboard](https://vercel.com/dashboard) và chọn dự án Sử Vàng 11.\n2. Vào tab **Settings** -> chọn menu **Environment Variables**.\n3. Thêm biến mới: Key là \`GEMINI_API_KEY\` và Value là API Key của bạn từ Google AI Studio.\n4. Bấm **Save**, sau đó sang tab **Deployments** bấm dấu 3 chấm (...) ở bản deploy mới nhất -> chọn **Redeploy** là trò chuyện được ngay nhé!`,
+      });
     }
 
+    const body = await parseRequestBody(req);
+    const { messages, context, actionType } = body;
+
     if (!messages || !Array.isArray(messages)) {
-      return sendJson(res, 400, { error: 'Dữ liệu tin nhắn không hợp lệ.' });
+      return res.status(400).json({ error: 'Dữ liệu tin nhắn không hợp lệ.' });
     }
 
     const contents = messages.map((m: { role: string; content: string }) => ({
@@ -62,11 +54,13 @@ export default async function handler(req: any, res: any) {
       },
     });
 
-    const reply = response.text || getFallbackHistoryAnswer(lastUserText);
-    return sendJson(res, 200, { reply });
+    const reply = response && response.text? response.text: || 'Thầy xin lỗi, kết nối bị gián đoạn đôi chút. Em gửi lại câu hỏi nhé!';
+    return res.status(200).json({ reply });
   } catch (error: any) {
-    console.error('Error in /api/chat, falling back to knowledge engine:', error);
-    const fallbackReply = getFallbackHistoryAnswer(lastUserText);
-    return sendJson(res, 200, { reply: fallbackReply });
+    console.error('Error in /api/chat:', error);
+    return res.status(200).json({
+      reply:
+        'Thầy Dũng xin chào em! Hệ thống AI đang tạm thời có lượng truy cập lớn trong vài giây. Em hãy bấm nút "🔄 Thử lại câu hỏi này ngay" bên dưới giúp Thầy nhé, hoặc hỏi Thầy về các bài học trọng tâm Lịch sử 11 (Cách mạng tư sản, Chủ nghĩa tư bản, Liên bang Xô Viết, Phong trào Cần vương...)!',
+    });
   }
 }

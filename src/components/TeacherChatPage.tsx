@@ -1,8 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, Sparkles, BookOpen, RefreshCw, HelpCircle, Lightbulb, Compass, Award } from 'lucide-react';
 import { ChatMessage } from '../types/history';
-import { safeFetchJson } from '../utils/apiHelper';
-import { generateHistoryAnswer } from '../utils/historyKnowledgeEngine';
 
 interface TeacherChatPageProps {
   initialPrompt?: string;
@@ -88,26 +86,78 @@ Bây giờ, em muốn chúng mình cùng ôn bài nào trong chương trình L�
         }),
       });
 
-      const data = await safeFetchJson<{ reply?: string }>(response, 'Lỗi kết nối máy chủ chat');
+      const rawText = await response.text();
+      let data: any = null;
+      try {
+        data = JSON.parse(rawText);
+      } catch {
+        // If not valid JSON (e.g. Vercel HTML or plain text error)
+      }
+
+      if (!response.ok) {
+        let serverErrorText = data?.error || '';
+        if (!serverErrorText) {
+          if (
+            rawText.includes('FUNCTION_INVOCATION') ||
+            rawText.includes('timeout') ||
+            response.status === 504
+          ) {
+            serverErrorText =
+              'Hệ thống phản hồi lâu hơn dự kiến do mạng. Em bấm nút gửi lại giúp Thầy nhé!';
+          } else if (
+            rawText.includes('A server error') ||
+            rawText.includes('Unexpected token') ||
+            response.status === 500
+          ) {
+            serverErrorText =
+              'Máy chủ Vercel chưa cấu hình biến môi trường GEMINI_API_KEY trong Project Settings -> Environment Variables. Bạn vui lòng vào Vercel Dashboard -> Settings -> Environment Variables -> Thêm GEMINI_API_KEY rồi Redeploy nhé!';
+          } else {
+            serverErrorText = rawText || `Lỗi máy chủ (${response.status})`;
+          }
+        }
+        throw new Error(serverErrorText);
+      }
+
+      const replyText =
+        data?.reply ||
+        (data?.error ? `Lỗi: ${data.error}` : 'Thầy xin lỗi, kết nối bị gián đoạn đôi chút. Em gửi lại câu hỏi giúp Thầy nhé!');
 
       const assistantMsg: ChatMessage = {
         id: 'assistant-' + Date.now(),
         role: 'assistant',
-        content: data.reply || 'Thầy xin lỗi, hiện tại mạng có chút chậm. Em hỏi lại lần nữa nhé!',
+        content: replyText,
         timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
       };
 
       setMessages((prev) => [...prev, assistantMsg]);
     } catch (err: any) {
-      console.warn('Backend API chat call encountered issue, providing knowledge engine response:', err);
-      const fallbackResult = generateHistoryAnswer(textToSend);
-      const assistantMsg: ChatMessage = {
-        id: 'assistant-' + Date.now(),
+      console.error(err);
+      const rawError = String(err?.message || '');
+      let friendlyError = rawError;
+      if (
+        rawError.includes('Unexpected token') ||
+        rawError.includes('is not valid JSON') ||
+        rawError.includes('A server e') ||
+        rawError.includes('body stream already read')
+      ) {
+        friendlyError =
+          'Máy chủ Vercel chưa cấu hình biến môi trường GEMINI_API_KEY trong Project Settings -> Environment Variables. Bạn vui lòng vào Vercel Dashboard -> Settings -> Environment Variables -> Thêm GEMINI_API_KEY rồi Redeploy nhé!';
+      } else if (
+        rawError.includes('503') ||
+        rawError.includes('high demand') ||
+        rawError.includes('429')
+      ) {
+        friendlyError =
+          'Hệ thống AI đang tạm thời có lượng truy cập lớn trong vài giây. Em hãy bấm "🔄 Thử lại câu hỏi này ngay" bên dưới giúp Thầy nhé!';
+      }
+      const errorMsg: ChatMessage = {
+        id: 'error-' + Date.now(),
         role: 'assistant',
-        content: fallbackResult.reply,
+        content: `Thầy xin lỗi: ${friendlyError}`,
         timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+        suggestedQuestions: [textToSend.trim()],
       };
-      setMessages((prev) => [...prev, assistantMsg]);
+      setMessages((prev) => [...prev, errorMsg]);
     } finally {
       setLoading(false);
     }
