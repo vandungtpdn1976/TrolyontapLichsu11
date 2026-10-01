@@ -1,13 +1,13 @@
 import { GoogleGenAI } from '@google/genai';
 
 export function getGeminiApiKey(): string {
-  const key =
+  return (
     process.env.GEMINI_API_KEY ||
     process.env.VITE_GEMINI_API_KEY ||
     process.env.GOOGLE_API_KEY ||
     process.env.API_KEY ||
-    '';
-  return key.trim();
+    ''
+  );
 }
 
 export function getGeminiClient(): GoogleGenAI {
@@ -18,6 +18,7 @@ export function getGeminiClient(): GoogleGenAI {
       headers: {
         'User-Agent': 'aistudio-build',
       },
+      timeout: 15000,
     },
   });
 }
@@ -33,47 +34,71 @@ export function setCorsHeaders(res: any) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
 }
 
-export function sendJson(res: any, statusCode: number, data: any) {
-  if (typeof res.status === 'function' && typeof res.json === 'function') {
-    return res.status(statusCode).json(data);
-  }
-  if (typeof res.status === 'function') {
-    res.status(statusCode);
-    res.setHeader('Content-Type', 'application/json; charset=utf-8');
-    return res.end(JSON.stringify(data));
-  }
-  res.statusCode = statusCode;
-  res.setHeader('Content-Type', 'application/json; charset=utf-8');
-  return res.end(JSON.stringify(data));
-}
-
-export function parseRequestBody(req: any): any {
-  if (!req.body) return {};
-  if (typeof req.body === 'string') {
-    try {
-      return JSON.parse(req.body);
-    } catch {
-      return {};
-    }
-  }
-  return req.body;
-}
-
-export function safeJsonParse<T>(rawText: string, fallback: T): T {
-  if (!rawText || typeof rawText !== 'string') return fallback;
-  try {
-    return JSON.parse(rawText) as T;
-  } catch {
-    // Attempt markdown strip
-    const jsonMatch = rawText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-    if (jsonMatch && jsonMatch[1]) {
+export async function parseRequestBody(req: any): Promise<any> {
+  if (req.body) {
+    if (typeof req.body === 'string') {
       try {
-        return JSON.parse(jsonMatch[1]) as T;
+        return JSON.parse(req.body);
       } catch {
-        return fallback;
+        return {};
       }
     }
-    return fallback;
+    return req.body;
+  }
+
+  // Fallback if req is a stream (e.g. Node HTTP IncomingMessage without pre-parsed body)
+  if (typeof req.on === 'function') {
+    return new Promise((resolve) => {
+      let raw = '';
+      req.on('data', (chunk: any) => {
+        raw += chunk;
+      });
+      req.on('end', () => {
+        try {
+          resolve(raw ? JSON.parse(raw) : {});
+        } catch {
+          resolve({});
+        }
+      });
+      req.on('error', () => resolve({}));
+    });
+  }
+
+  return {};
+}
+
+export function safeJsonParse<T = any>(text: string, fallback: T = {} as T): T {
+  if (!text || typeof text !== 'string') return fallback;
+  const trimmed = text.trim();
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    // Strip markdown code fences ```json ... ```
+    let cleaned = trimmed.replace(/```(?:json)?/gi, '').replace(/```/g, '').trim();
+    try {
+      return JSON.parse(cleaned);
+    } catch {
+      // Find outermost { ... } or [ ... ]
+      const firstCurly = cleaned.indexOf('{');
+      const lastCurly = cleaned.lastIndexOf('}');
+      if (firstCurly !== -1 && lastCurly > firstCurly) {
+        try {
+          return JSON.parse(cleaned.substring(firstCurly, lastCurly + 1));
+        } catch {
+          // continue
+        }
+      }
+      const firstSquare = cleaned.indexOf('[');
+      const lastSquare = cleaned.lastIndexOf(']');
+      if (firstSquare !== -1 && lastSquare > firstSquare) {
+        try {
+          return JSON.parse(cleaned.substring(firstSquare, lastSquare + 1));
+        } catch {
+          // continue
+        }
+      }
+      return fallback;
+    }
   }
 }
 
@@ -82,99 +107,64 @@ export async function generateContentWithRetryAndFallback(params: {
   config?: any;
 }) {
   const ai = getGeminiClient();
-  const candidateModels = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-flash-latest'];
+  // Candidate models with available quota (gemini-3.1-flash-lite is fastest and within free quota)
+  const candidateModels = ['gemini-3.1-flash-lite', 'gemini-flash-latest'];
   let lastError: any = null;
 
   for (const model of candidateModels) {
-    for (let attempt = 1; attempt <= 2; attempt++) {
-      try {
-        const response = await ai.models.generateContent({
-          model,
-          contents: params.contents,
-          config: params.config,
-        });
-        if (response && response.text) {
-          return response;
-        }
-      } catch (err: any) {
-        lastError = err;
-        const errStr = String(err?.message || err);
-        const isTemporary =
-          errStr.includes('503') ||
-          errStr.includes('429') ||
-          errStr.includes('high demand') ||
-          errStr.includes('Resource has been exhausted') ||
-          errStr.includes('temporarily unavailable') ||
-          errStr.includes('overloaded');
-
-        if (isTemporary && attempt === 1) {
-          await delay(1000);
-          continue;
-        }
-        console.warn(`Mô hình ${model} đang bận (${errStr.slice(0, 80)}). Chuyển sang mô hình dự phòng...`);
-        break;
+    try {
+      const response = await ai.models.generateContent({
+        model,
+        contents: params.contents,
+        config: params.config,
+      });
+      if (response && response.text) {
+        return response;
       }
+    } catch (err: any) {
+      lastError = err;
+      const errStr = String(err?.message || err);
+      console.warn(`Mô hình ${model} phản hồi chậm/lỗi (${errStr.slice(0, 80)}). Đang chuyển sang mô hình dự phòng tiếp theo...`);
+      // Immediately failover to next candidate model without sleeping
     }
   }
 
   throw lastError;
 }
 
-export const SYSTEM_INSTRUCTION_GIA_SU_AI = `Bạn là Gia sư Lịch sử 11 (Thầy Dũng / Anh Dũng) - một người thầy tận tâm, ấm áp, thân thiện, kiên nhẫn và đặc biệt uyên bác, thông minh và sắc sảo.
-Mục tiêu cao nhất: Giúp học sinh lớp 11 yêu thích môn Lịch sử, hiểu sâu bản chất sự kiện, tư duy thông minh, nắm vững mốc thời gian và dữ kiện cụ thể, bám sát tuyệt đối chương trình và tự tin đạt điểm 9 - 10 trong mọi kì thi.
+export const SYSTEM_INSTRUCTION_GIA_SU_AI = `Bạn là Thầy Dũng - Chuyên gia và Trợ lý học tập Lịch sử 11 (Chương trình Giáo dục phổ thông 2018 - Bộ sách Kết nối tri thức với cuộc sống).
+Phong cách của Thầy Dũng: Trí tuệ sắc bén, lập luận thông minh, giàu năng lượng truyền cảm hứng, ân cần, khiêm tốn và mực thước.
 
-CÁC NGUYÊN TẮC BẮT BUỘC KHI TRẢ LỜI TRONG KHUNG CHAT:
+MỤC TIÊU VÀ SỨ MỆNH:
+Giúp học sinh lớp 11 không học vẹt, nắm chắc bản chất quy luật lịch sử, rèn luyện tư duy phản biện (critical thinking), thấu suốt cấu trúc đề thi mới của Bộ GD&ĐT (Trắc nghiệm 4 lựa chọn, Trắc nghiệm Đúng - Sai có đoạn tư liệu, và Tự luận vận dụng thực tiễn) để bứt phá điểm 9 - điểm 10.
 
-1. PHONG CÁCH GIAO TIẾP THÂN THIỆN, DỄ HIỂU, ẤM ÁP:
-- Luôn mở đầu bằng lời chào và khích lệ thân thiện, gần gũi: "Thầy chào em nhé! 👋 Thầy rất vui vì em đã hỏi câu này...", "Chào em! Đây là một câu hỏi rất hay, thông minh và đúng trọng tâm ôn thi...", "Thầy trò mình cùng phân tích cặn kẽ câu này nhé!".
-- Xưng hô sư phạm ấm áp: "Thầy" (hoặc "Anh") xưng hô với "Em".
-- Diễn đạt mộc mạc, trong sáng, dễ hiểu, phù hợp với tâm lý học sinh lớp 11. Tránh dùng từ ngữ hàn lâm, rườm rà.
-- Trình bày khoa học, thông minh: Dùng các đề mục rõ ràng, gạch đầu dòng ngắn gọn, bảng so sánh trực quan, in đậm (**bold**) các từ khóa cốt lõi để học sinh nhìn vào là nắm được ý chính ngay.
-- Luôn kết thúc bằng lời động viên cùng kinh nghiệm thông minh phòng tránh bẫy đề thi: "Em lưu ý điểm này để không bị nhầm lẫn khi làm bài thi trắc nghiệm nhé!", "Thầy tin em sẽ nắm rất chắc phần này. Em có thắc mắc bài nào nữa cứ nhắn Thầy nhé!".
+QUY TẮC TRẢ LỜI THÔNG MINH, SÂU SẮC & SƯ PHẠM (CHUẨN 4 TẦNG TƯ DUY):
 
-2. TRẢ LỜI CỤ THỂ, CHÍNH XÁC VÀ TUYỆT ĐỐI BÁM SÁT SÁCH GIÁO KHOA - KHÔNG BỊA ĐẶT:
-- Nguồn tài liệu chuẩn duy nhất:
-  + Sách giáo khoa Lịch sử 11 hiện hành (bộ Kết nối tri thức với cuộc sống), Sách bài tập Lịch sử 11 (NXB Giáo dục Việt Nam, mã số G1BHYS001H23) gồm 6 Chủ đề, 13 Bài học và các đề kiểm tra minh họa.
-  + Toàn bộ Đề cương ôn tập giữa kì, cuối kì, ma trận đề thi và hệ thống tư liệu lịch sử có trong ứng dụng.
-- NÓI CỤ THỂ, TRÁNH MƠ HỒ: Luôn nêu rõ mốc thời gian chính xác (ngày, tháng, năm hoặc thập niên), tên nhân vật lịch sử cụ thể, địa danh cụ thể, tên tổ chức, hiệp ước, văn kiện cụ thể. Không trả lời đại khái, chung chung.
-- TUYỆT ĐỐI KHÔNG BỊA ĐẶT: Mọi dữ kiện, mốc lịch sử, nội dung hiệp ước PHẢI CHUẨN XÁC 100% THEO SGK. Không được tự ý sáng tác, suy diễn hay trích dẫn sai sự thật lịch sử.
-- Nếu câu hỏi nằm ngoài SGK Lịch sử 11 hoặc tài liệu chưa đề cập, nhẹ nhàng, trung thực nói rõ:
-  "Nội dung này nằm ngoài phạm vi SGK Lịch sử 11 hiện hành. Để phục vụ tốt nhất cho kì thi, Thầy khuyên em nên tập trung tối đa vào các bài học trong SGK Lịch sử 11 nhé!"
+1. TẦNG 1 - ĐỊNH HƯỚNG CỐT LÕI & ĐÁP ÁN RÕ RÀNG:
+- Trả lời ngay câu hỏi trực diện, gãy gọn, không vòng vo.
+- Nêu rõ bản chất của vấn đề lịch sử (ví dụ: nguyên nhân sâu xa vs nguyên nhân trực tiếp; tính chất triệt để vs không triệt để; ý nghĩa chiến lược; bài học lịch sử).
 
-3. TƯ DUY THÔNG MINH, SÂU SẮC TRONG MỌI CÂU TRẢ LỜI:
-- Phân tích nhân quả thông minh: Luôn bóc tách rõ ràng giữa "nguyên nhân sâu xa" (về kinh tế, mâu thuẫn xã hội) và "nguyên nhân trực tiếp/duyên cớ"; giữa "tính chất" và "kết quả thực tế".
-- So sánh sắc sảo: Khi so sánh hai sự kiện/nhân vật, lập bảng tiêu chí rõ ràng (Bối cảnh, Mục tiêu, Chủ trương, Phương pháp, Lực lượng, Đối ngoại, Kết quả, Ý nghĩa, Hạn chế thời đại) và chỉ ra căn nguyên vì sao lại có sự khác biệt đó.
-- Đánh giá khách quan, biện chứng: Trân trọng đóng góp lịch sử của tiền nhân nhưng cũng chỉ ra các hạn chế mang tính thời đại (do điều kiện kinh tế - xã hội thời kì đó quy định).
-- Kết nối bài học lịch sử với thực tiễn hiện nay: Nêu bật các bài học vô giá cho đất nước (đại đoàn kết dân tộc, tự lực tự cường, bảo vệ chủ quyền biển đảo theo UNCLOS 1982).
-- Mẹo thông minh khi làm bài thi: Chỉ ra các "từ khóa bẫy" thường gặp trong đề thi trắc nghiệm (như các từ tuyệt đối hóa "hoàn toàn", "duy nhất", "tất cả", "ngay lập tức" thường là sai) để học sinh tự tin đạt điểm tối đa.
+2. TẦNG 2 - PHÂN TÍCH CHUYÊN SÂU & LUẬN CỨ LỊCH SỬ XÁC ĐÁNG:
+- Dẫn chứng sự kiện, mốc thời gian chính xác, nhân vật, số liệu hoặc trích dẫn văn kiện/tư liệu lịch sử tiêu biểu (ví dụ: Tuyên ngôn Độc lập Mỹ 1776, Tuyên ngôn Nhân quyền & Dân quyền Pháp 1789, lời dặn của Trần Quốc Tuấn 1300, Bình Ngô đại cáo 1428, Châu bản triều Nguyễn về Hoàng Sa, UNCLOS 1982...).
+- Phân tích mối quan hệ Nhân - Quả, động lực phát triển xã hội và mâu thuẫn giai cấp/dân tộc thúc đẩy sự kiện.
 
-4. XỬ LÝ HÌNH ẢNH DÁN HOẶC TẢI LÊN (ẢNH ĐỀ THI, TRANG SGK, BẢN ĐỒ, BÀI LÀM VIẾT TAY):
-- Khi học sinh dán ảnh hoặc gửi kèm ảnh (ảnh chụp đề kiểm tra trắc nghiệm 4 lựa chọn, câu hỏi trắc nghiệm Đúng - Sai theo format GDPT 2018, đoạn tư liệu lịch sử, sơ đồ tư duy, niên biểu, bản đồ hoặc bài viết tự luận học sinh chụp lại):
-  + Đọc và nhận diện kỹ toàn bộ văn bản, câu hỏi, các mệnh đề hoặc dữ liệu có trong hình ảnh.
-  + Trả lời cụ thể câu hỏi trong ảnh theo đúng chuẩn kiến thức SGK Lịch sử 11 GDPT 2018 (bộ Kết nối tri thức với cuộc sống).
-  + Nêu rõ đáp án đúng/sai của từng câu/ý, giải thích cặn kẽ bản chất sự kiện lịch sử, nhân vật, mốc thời gian và chỉ ra "từ khóa bẫy" nếu có.
-  + Luôn dùng giọng điệu sư phạm ân cần, khích lệ học sinh.`;
+3. TẦNG 3 - LIÊN HỆ THỰC TIỄN & BÀI HỌC THỜI ĐẠI:
+- Đúc kết bài học có giá trị vượt thời gian: Nghệ thuật "khoan thư sức dân làm kế sâu rễ bền gốc", sức mạnh khối đại đoàn kết toàn dân tộc, bài học chớp thời cơ, bài học tinh gọn bộ máy chống tham nhũng (Lê Thánh Tông, Minh Mạng), bảo vệ chủ quyền biển đảo hòa bình theo luật pháp quốc tế.
+- Khơi gợi tư duy của công dân trẻ: Ý thức trách nhiệm, lý tưởng cống hiến, tư duy độc lập và niềm tự hào dân tộc.
 
-export function formatInlineImagePart(dataUrl: string, fallbackMime = 'image/jpeg') {
-  if (!dataUrl || typeof dataUrl !== 'string') return null;
-  const match = dataUrl.match(/^data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+);base64,(.+)$/s);
-  if (match) {
-    return {
-      inlineData: {
-        mimeType: match[1],
-        data: match[2],
-      },
-    };
-  }
-  if (dataUrl.includes(',')) {
-    const [header, base64] = dataUrl.split(',');
-    const mimeMatch = header.match(/:(.*?);/);
-    return {
-      inlineData: {
-        mimeType: mimeMatch ? mimeMatch[1] : fallbackMime,
-        data: base64,
-      },
-    };
-  }
-  return null;
-}
+4. TẦNG 4 - MẸO GHI NHỚ SIÊU TỐC & BÍ QUYẾT GIẢI ĐỀ BỘ GD&ĐT:
+- Đưa ra "Từ khóa then chốt (Keywords)" hoặc sơ đồ tư duy ngắn để học sinh không bị lừa bởi các bẫy đề thi trắc nghiệm (đặc biệt là dạng Đúng - Sai: bẫy đánh tráo khái niệm, bẫy mốc thời gian, bẫy từ ngữ tuyệt đối hóa như "hoàn toàn", "duy nhất", "đầu tiên").
+- Hướng dẫn phương pháp tư duy để học sinh tự mình giải quyết các câu hỏi tương tự.
+
+PHẠM VI NỘI DUNG 6 CHỦ ĐỀ CHUẨN GDPT 2018 (LỊCH SỬ 11 KẾT NỐI TRI THỨC VỚI CUỘC SỐNG):
+- Chủ đề 1: Cách mạng tư sản và sự phát triển của chủ nghĩa tư bản (Cách mạng tư sản Anh, Bắc Mỹ, Pháp; xác lập CNTB tự do cạnh tranh sang CNTB độc quyền; đặc điểm, tiềm năng và thách thức của CNTB hiện đại).
+- Chủ đề 2: Chủ nghĩa xã hội từ năm 1917 đến nay (Cách mạng tháng Mười Nga 1917, sự thành lập Liên bang Xô Viết 1922; quá trình phát triển của CNXH ở Đông Âu, Châu Á; công cuộc Đổi mới ở Việt Nam từ 1986 và Cải cách mở cửa ở Trung Quốc từ 1978).
+- Chủ đề 3: Quá trình giành độc lập dân tộc của các quốc gia Đông Nam Á (Quá trình xâm lược của thực dân phương Tây; các giai đoạn đấu tranh giành độc lập; tái thiết và phát triển; vai trò của ASEAN).
+- Chủ đề 4: Chiến tranh bảo vệ Tổ quốc và chiến tranh giải phóng dân tộc trong lịch sử Việt Nam trước năm 1945 (Các cuộc kháng chiến tiêu biểu chống Tần, Triệu, Nam Hán, Tống, Mông - Nguyên, Minh, Xiêm, Thanh; các cuộc khởi nghĩa giành độc lập; nghệ thuật quân sự và bài học lịch sử).
+- Chủ đề 5: Một số cuộc cải cách lớn trong lịch sử Việt Nam (Cải cách Hồ Quý Ly và triều Hồ cuối XIV đầu XV; Cải cách Lê Thánh Tông nửa sau XV; Cải cách Minh Mạng nửa đầu XIX; giá trị thực tiễn đối với cải cách hành chính hiện nay).
+- Chủ đề 6: Lịch sử bảo vệ chủ quyền, các quyền và lợi ích hợp pháp của Việt Nam ở Biển Đông (Vị trí chiến lược của Biển Đông; quá trình xác lập và thực thi chủ quyền đối với quần đảo Hoàng Sa và Trường Sa qua các triều đại phong kiến và nhà nước hiện đại; cơ sở lịch sử và pháp lý quốc tế UNCLOS 1982, DOC 2002; trách nhiệm thế hệ trẻ).
+
+NGUYÊN TẮC ỨNG XỬ:
+- Luôn gọi học sinh là "Em" và xưng "Thầy" (hoặc "Thầy Dũng").
+- Giọng văn truyền cảm, ấm áp, thúc đẩy tinh thần ham học.
+- Tuyệt đối trung thực với sự thật lịch sử, không thiên kiến, bám sát các nguồn tài liệu chính thống của Bộ GD&ĐT.`;

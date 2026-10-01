@@ -1,8 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, Sparkles, BookOpen, RefreshCw, HelpCircle, Lightbulb, Compass, Award } from 'lucide-react';
 import { ChatMessage } from '../types/history';
-import { safeFetchJson } from '../utils/apiHelper';
-import { generateHistoryAnswer } from '../utils/historyKnowledgeEngine';
 
 interface TeacherChatPageProps {
   initialPrompt?: string;
@@ -17,26 +15,30 @@ export const TeacherChatPage: React.FC<TeacherChatPageProps> = ({
     {
       id: 'welcome-msg',
       role: 'assistant',
-      content: `Chào em nhé! 👋 Thầy rất vui được đồng hành cùng em ôn tập môn **Lịch sử lớp 11**.
+      content: `Thầy Dũng xin chào em! 👋 Thầy rất vui được đồng hành cùng em ôn luyện môn **Lịch sử lớp 11** theo chương trình Giáo dục phổ thông 2018 (Bộ sách Kết nối tri thức với cuộc sống).
 
-Thầy sẽ hỗ trợ em ôn tập kiến thức trọng tâm, bám sát **Sách giáo khoa Lịch sử 11 hiện hành của Bộ Giáo dục và Đào tạo** và các tài liệu ôn tập chuẩn được cung cấp.
+🎯 **Phương pháp học tập thông minh cùng Thầy Dũng (Chuẩn 4 Tầng Tư Duy):**
+1. **Hiểu sâu bản chất - Không học vẹt**: Nắm vững quy luật nhân - quả, mâu thuẫn thời đại và động lực phát triển xã hội.
+2. **Làm chủ cấu trúc đề thi mới của Bộ GD&ĐT**: Rèn luyện thành thạo dạng bài Trắc nghiệm 4 phương án, Trắc nghiệm Đúng - Sai từ đoạn trích tư liệu lịch sử, và Tự luận vận dụng thực tiễn.
+3. **Phạm vi chuẩn mực 6 Chủ đề cốt lõi Lịch sử 11**:
+   • *Chủ đề 1*: Cách mạng tư sản & Chủ nghĩa tư bản hiện đại.
+   • *Chủ đề 2*: Chủ nghĩa xã hội từ 1917 đến nay (Liên Xô & công cuộc Đổi mới).
+   • *Chủ đề 3*: Quá trình giành độc lập dân tộc ở Đông Nam Á & vai trò ASEAN.
+   • *Chủ đề 4*: Chiến tranh bảo vệ Tổ quốc & giải phóng dân tộc trong lịch sử Việt Nam.
+   • *Chủ đề 5*: Ba cuộc cải cách lớn (Hồ Quý Ly, Lê Thánh Tông, Minh Mạng).
+   • *Chủ đề 6*: Lịch sử bảo vệ chủ quyền Biển Đông, Hoàng Sa - Trường Sa & UNCLOS 1982.
+4. **Bí kíp tránh bẫy & Mẹo nhớ từ khóa then chốt**: Thầy sẽ phân tích cặn kẽ các bẫy thường gặp trong đề thi để em tự tin đạt điểm 9 - 10.
 
-📌 **Nguyên tắc cùng học tập của chúng ta:**
-1. **Bám sát nguồn chuẩn**: Chỉ ôn tập dựa trên SGK Lịch sử 11 và tài liệu học tập được cung cấp, không học lan man.
-2. **Trọng tâm & Dễ nhớ**: Nêu rõ mốc thời gian, sự kiện, nhân vật chính, giải thích ngắn gọn, dễ hiểu kèm ví dụ và sơ đồ trực quan.
-3. **Phạm vi trọng tâm**: Tập trung trong phạm vi **Lịch sử thế giới (1789 – 1918)** và **Lịch sử Việt Nam (1858 – 1918)** cùng các chủ đề theo phân phối chương trình SGK 11.
-4. **Học hiểu bản chất**: Khuyến khích em đặt câu hỏi, thảo luận và hiểu sâu nguyên nhân - kết quả - ý nghĩa lịch sử.
-
-Bây giờ, em muốn chúng mình cùng ôn bài nào trong chương trình Lịch sử 11 trước nè? 📖✨`,
+Em đang băn khoăn câu hỏi hay muốn Thầy hướng dẫn chủ đề nào hôm nay? 📖✨`,
       timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
       suggestedQuestions: [
-        'Thầy tạo cho em 1 bài tập Đúng - Sai bám sát tư liệu SGK Lịch sử 11',
-        'Thầy phân tích giúp em đoạn tư liệu Lời dặn Trần Quốc Tuấn: "Khoan thư sức dân"',
-        'Thầy giúp em ôn Bài 1 & Bài 2: Cách mạng tư sản và CNTB hiện đại',
-        'Quá trình thực dân phương Tây xâm lược Đông Nam Á diễn ra như thế nào?',
-        'Các mốc thời gian chính phong trào Cần vương (1885 - 1896) chống Pháp',
-        'So sánh xu hướng cứu nước của cụ Phan Bội Châu và cụ Phan Châu Trinh',
-        'Ôn tập kiến thức trọng tâm Đề cương giữa kỳ I và cuối kỳ I',
+        'Thầy phân tích bản chất bẫy đề thi Đúng - Sai ở đoạn trích tư liệu lịch sử',
+        'Phân tích lời dặn của Trần Quốc Tuấn (1300): "Khoan thư sức dân để làm kế sâu rễ bền gốc"',
+        'So sánh cuộc cải cách của Lê Thánh Tông (thế kỉ XV) và Minh Mạng (thế kỉ XIX)',
+        'Chứng cứ lịch sử và pháp lý khẳng định chủ quyền của Việt Nam ở Hoàng Sa - Trường Sa',
+        'Tiềm năng, thách thức của Chủ nghĩa tư bản hiện đại và liên hệ thực tiễn',
+        'Vì sao nói Cách mạng tư sản Pháp (1789) là cuộc cách mạng triệt để nhất?',
+        'Nguyên nhân sụp đổ của Liên Xô và bài học đắt giá cho công cuộc Đổi mới ở Việt Nam',
       ],
     },
   ]);
@@ -88,26 +90,78 @@ Bây giờ, em muốn chúng mình cùng ôn bài nào trong chương trình L�
         }),
       });
 
-      const data = await safeFetchJson<{ reply?: string }>(response, 'Lỗi kết nối máy chủ chat');
+      const rawText = await response.text();
+      let data: any = null;
+      try {
+        data = JSON.parse(rawText);
+      } catch {
+        // If not valid JSON (e.g. Vercel HTML or plain text error)
+      }
+
+      if (!response.ok) {
+        let serverErrorText = data?.error || '';
+        if (!serverErrorText) {
+          if (
+            rawText.includes('FUNCTION_INVOCATION') ||
+            rawText.includes('timeout') ||
+            response.status === 504
+          ) {
+            serverErrorText =
+              'Hệ thống phản hồi lâu hơn dự kiến do mạng. Em bấm nút gửi lại giúp Thầy nhé!';
+          } else if (
+            rawText.includes('A server error') ||
+            rawText.includes('Unexpected token') ||
+            response.status === 500
+          ) {
+            serverErrorText =
+              'Máy chủ Vercel chưa cấu hình biến môi trường GEMINI_API_KEY trong Project Settings -> Environment Variables. Bạn vui lòng vào Vercel Dashboard -> Settings -> Environment Variables -> Thêm GEMINI_API_KEY rồi Redeploy nhé!';
+          } else {
+            serverErrorText = rawText || `Lỗi máy chủ (${response.status})`;
+          }
+        }
+        throw new Error(serverErrorText);
+      }
+
+      const replyText =
+        data?.reply ||
+        (data?.error ? `Lỗi: ${data.error}` : 'Thầy xin lỗi, kết nối bị gián đoạn đôi chút. Em gửi lại câu hỏi giúp Thầy nhé!');
 
       const assistantMsg: ChatMessage = {
         id: 'assistant-' + Date.now(),
         role: 'assistant',
-        content: data.reply || 'Thầy xin lỗi, hiện tại mạng có chút chậm. Em hỏi lại lần nữa nhé!',
+        content: replyText,
         timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
       };
 
       setMessages((prev) => [...prev, assistantMsg]);
     } catch (err: any) {
-      console.warn('Backend API chat call encountered issue, providing knowledge engine response:', err);
-      const fallbackResult = generateHistoryAnswer(textToSend);
-      const assistantMsg: ChatMessage = {
-        id: 'assistant-' + Date.now(),
+      console.error(err);
+      const rawError = String(err?.message || '');
+      let friendlyError = rawError;
+      if (
+        rawError.includes('Unexpected token') ||
+        rawError.includes('is not valid JSON') ||
+        rawError.includes('A server e') ||
+        rawError.includes('body stream already read')
+      ) {
+        friendlyError =
+          'Máy chủ Vercel chưa cấu hình biến môi trường GEMINI_API_KEY trong Project Settings -> Environment Variables. Bạn vui lòng vào Vercel Dashboard -> Settings -> Environment Variables -> Thêm GEMINI_API_KEY rồi Redeploy nhé!';
+      } else if (
+        rawError.includes('503') ||
+        rawError.includes('high demand') ||
+        rawError.includes('429')
+      ) {
+        friendlyError =
+          'Hệ thống AI đang tạm thời có lượng truy cập lớn trong vài giây. Em hãy bấm "🔄 Thử lại câu hỏi này ngay" bên dưới giúp Thầy nhé!';
+      }
+      const errorMsg: ChatMessage = {
+        id: 'error-' + Date.now(),
         role: 'assistant',
-        content: fallbackResult.reply,
+        content: `Thầy xin lỗi: ${friendlyError}`,
         timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+        suggestedQuestions: [textToSend.trim()],
       };
-      setMessages((prev) => [...prev, assistantMsg]);
+      setMessages((prev) => [...prev, errorMsg]);
     } finally {
       setLoading(false);
     }

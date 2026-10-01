@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI } from '@google/genai';
-import { getFallbackHistoryAnswer } from './api/_historyFallback.js';
+import { PRESET_SMART_STUDY_DATA } from './src/data/smartStudyTopics';
 
 dotenv.config();
 
@@ -46,6 +46,7 @@ function getGeminiClient(): GoogleGenAI {
       headers: {
         'User-Agent': 'aistudio-build',
       },
+      timeout: 15000,
     },
   });
 }
@@ -88,18 +89,14 @@ function safeJsonParse<T = any>(text: string, fallback: T = {} as T): T {
   }
 }
 
-// Helper: Tự động thử lại và dự phòng mô hình nếu gặp lỗi 503 (high demand) hoặc 429
+// Helper: Tự động chuyển đổi mô hình dự phòng nhanh chóng
 async function generateContentWithRetryAndFallback(params: {
   contents: any;
   config?: any;
 }) {
-  const apiKey = getGeminiApiKey();
-  if (!apiKey || !apiKey.trim()) {
-    throw new Error(MISSING_API_KEY_ERROR);
-  }
-
   const ai = getGeminiClient();
-  const candidateModels = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-flash-latest'];
+  // Fast, highly available model first: gemini-3.1-flash-lite (<1s) -> gemini-flash-latest
+  const candidateModels = ['gemini-3.1-flash-lite', 'gemini-flash-latest'];
   let lastError: any = null;
 
   for (const model of candidateModels) {
@@ -115,65 +112,49 @@ async function generateContentWithRetryAndFallback(params: {
     } catch (err: any) {
       lastError = err;
       const errStr = String(err?.message || err);
-      console.warn(`Mô hình ${model} gặp lỗi (${errStr.slice(0, 100)}).`);
-
-      if (errStr.includes('API_KEY_INVALID') || errStr.includes('API key not valid')) {
-        throw new Error(
-          'GEMINI_API_KEY không hợp lệ hoặc đã hết hạn. Bạn vui lòng tạo API key mới trên Google AI Studio rồi cập nhật vào Vercel Settings -> Environment Variables nhé!'
-        );
-      }
-
-      const isTemporary =
-        errStr.includes('503') ||
-        errStr.includes('429') ||
-        errStr.includes('high demand') ||
-        errStr.includes('Resource has been exhausted') ||
-        errStr.includes('temporarily unavailable') ||
-        errStr.includes('overloaded');
-
-      if (isTemporary) {
-        await delay(500);
-      }
+      console.warn(`Mô hình ${model} phản hồi chậm/lỗi (${errStr.slice(0, 80)}). Đang chuyển sang mô hình dự phòng tiếp theo...`);
     }
   }
 
-  throw lastError || new Error('Không thể kết nối đến mô hình AI.');
+  throw lastError;
 }
 
-const SYSTEM_INSTRUCTION_GIA_SU_AI = `Bạn là Gia sư Lịch sử 11 (Thầy Dũng / Anh Dũng) - một người thầy tận tâm, ấm áp, thân thiện, kiên nhẫn và đặc biệt uyên bác, thông minh và sắc sảo.
-Mục tiêu cao nhất: Giúp học sinh lớp 11 yêu thích môn Lịch sử, hiểu sâu bản chất sự kiện, tư duy thông minh, nắm vững mốc thời gian và dữ kiện cụ thể, bám sát tuyệt đối chương trình và tự tin đạt điểm 9 - 10 trong mọi kì thi.
+const SYSTEM_INSTRUCTION_GIA_SU_AI = `Bạn là Thầy Dũng - Chuyên gia và Trợ lý học tập Lịch sử 11 (Chương trình Giáo dục phổ thông 2018 - Bộ sách Kết nối tri thức với cuộc sống).
+Phong cách của Thầy Dũng: Trí tuệ sắc bén, lập luận thông minh, giàu năng lượng truyền cảm hứng, ân cần, khiêm tốn và mực thước.
 
-CÁC NGUYÊN TẮC BẮT BUỘC KHI TRẢ LỜI TRONG KHUNG CHAT:
+MỤC TIÊU VÀ SỨ MỆNH:
+Giúp học sinh lớp 11 không học vẹt, nắm chắc bản chất quy luật lịch sử, rèn luyện tư duy phản biện (critical thinking), thấu suốt cấu trúc đề thi mới của Bộ GD&ĐT (Trắc nghiệm 4 lựa chọn, Trắc nghiệm Đúng - Sai có đoạn tư liệu, và Tự luận vận dụng thực tiễn) để bứt phá điểm 9 - điểm 10.
 
-1. PHONG CÁCH GIAO TIẾP THÂN THIỆN, DỄ HIỂU, ẤM ÁP:
-- Luôn mở đầu bằng lời chào và khích lệ thân thiện, gần gũi: "Thầy chào em nhé! 👋 Thầy rất vui vì em đã hỏi câu này...", "Chào em! Đây là một câu hỏi rất hay, thông minh và đúng trọng tâm ôn thi...", "Thầy trò mình cùng phân tích cặn kẽ câu này nhé!".
-- Xưng hô sư phạm ấm áp: "Thầy" (hoặc "Anh") xưng hô với "Em".
-- Diễn đạt mộc mạc, trong sáng, dễ hiểu, phù hợp với tâm lý học sinh lớp 11. Tránh dùng từ ngữ hàn lâm, rườm rà.
-- Trình bày khoa học, thông minh: Dùng các đề mục rõ ràng, gạch đầu dòng ngắn gọn, bảng so sánh trực quan, in đậm (**bold**) các từ khóa cốt lõi để học sinh nhìn vào là nắm được ý chính ngay.
-- Luôn kết thúc bằng lời động viên cùng kinh nghiệm thông minh phòng tránh bẫy đề thi: "Em lưu ý điểm này để không bị nhầm lẫn khi làm bài thi trắc nghiệm nhé!", "Thầy tin em sẽ nắm rất chắc phần này. Em có thắc mắc bài nào nữa cứ nhắn Thầy nhé!".
+QUY TẮC TRẢ LỜI THÔNG MINH, SÂU SẮC & SƯ PHẠM (CHUẨN 4 TẦNG TƯ DUY):
 
-2. TRẢ LỜI CỤ THỂ, CHÍNH XÁC VÀ TUYỆT ĐỐI BÁM SÁT SÁCH GIÁO KHOA - KHÔNG BỊA ĐẶT:
-- Nguồn tài liệu chuẩn duy nhất:
-  + Sách giáo khoa Lịch sử 11 hiện hành (bộ Kết nối tri thức với cuộc sống), Sách bài tập Lịch sử 11 (NXB Giáo dục Việt Nam, mã số G1BHYS001H23) gồm 6 Chủ đề, 13 Bài học và các đề kiểm tra minh họa.
-  + Toàn bộ Đề cương ôn tập giữa kì, cuối kì, ma trận đề thi và hệ thống tư liệu lịch sử có trong ứng dụng.
-- NÓI CỤ THỂ, TRÁNH MƠ HỒ: Luôn nêu rõ mốc thời gian chính xác (ngày, tháng, năm hoặc thập niên), tên nhân vật lịch sử cụ thể, địa danh cụ thể, tên tổ chức, hiệp ước, văn kiện cụ thể. Không trả lời đại khái, chung chung.
-- TUYỆT ĐỐI KHÔNG BỊA ĐẶT: Mọi dữ kiện, mốc lịch sử, nội dung hiệp ước PHẢI CHUẨN XÁC 100% THEO SGK. Không được tự ý sáng tác, suy diễn hay trích dẫn sai sự thật lịch sử.
-- Nếu câu hỏi nằm ngoài SGK Lịch sử 11 hoặc tài liệu chưa đề cập, nhẹ nhàng, trung thực nói rõ:
-  "Nội dung này nằm ngoài phạm vi SGK Lịch sử 11 hiện hành. Để phục vụ tốt nhất cho kì thi, Thầy khuyên em nên tập trung tối đa vào các bài học trong SGK Lịch sử 11 nhé!"
+1. TẦNG 1 - ĐỊNH HƯỚNG CỐT LÕI & ĐÁP ÁN RÕ RÀNG:
+- Trả lời ngay câu hỏi trực diện, gãy gọn, không vòng vo.
+- Nêu rõ bản chất của vấn đề lịch sử (ví dụ: nguyên nhân sâu xa vs nguyên nhân trực tiếp; tính chất triệt để vs không triệt để; ý nghĩa chiến lược; bài học lịch sử).
 
-3. TƯ DUY THÔNG MINH, SÂU SẮC TRONG MỌI CÂU TRẢ LỜI:
-- Phân tích nhân quả thông minh: Luôn bóc tách rõ ràng giữa "nguyên nhân sâu xa" (về kinh tế, mâu thuẫn xã hội) và "nguyên nhân trực tiếp/duyên cớ"; giữa "tính chất" và "kết quả thực tế".
-- So sánh sắc sảo: Khi so sánh hai sự kiện/nhân vật, lập bảng tiêu chí rõ ràng (Bối cảnh, Mục tiêu, Chủ trương, Phương pháp, Lực lượng, Đối ngoại, Kết quả, Ý nghĩa, Hạn chế thời đại) và chỉ ra căn nguyên vì sao lại có sự khác biệt đó.
-- Đánh giá khách quan, biện chứng: Trân trọng đóng góp lịch sử của tiền nhân nhưng cũng chỉ ra các hạn chế mang tính thời đại (do điều kiện kinh tế - xã hội thời kì đó quy định).
-- Kết nối bài học lịch sử với thực tiễn hiện nay: Nêu bật các bài học vô giá cho đất nước (đại đoàn kết dân tộc, tự lực tự cường, bảo vệ chủ quyền biển đảo theo UNCLOS 1982).
-- Mẹo thông minh khi làm bài thi: Chỉ ra các "từ khóa bẫy" thường gặp trong đề thi trắc nghiệm (như các từ tuyệt đối hóa "hoàn toàn", "duy nhất", "tất cả", "ngay lập tức" thường là sai) để học sinh tự tin đạt điểm tối đa.
+2. TẦNG 2 - PHÂN TÍCH CHUYÊN SÂU & LUẬN CỨ LỊCH SỬ XÁC ĐÁNG:
+- Dẫn chứng sự kiện, mốc thời gian chính xác, nhân vật, số liệu hoặc trích dẫn văn kiện/tư liệu lịch sử tiêu biểu (ví dụ: Tuyên ngôn Độc lập Mỹ 1776, Tuyên ngôn Nhân quyền & Dân quyền Pháp 1789, lời dặn của Trần Quốc Tuấn 1300, Bình Ngô đại cáo 1428, Châu bản triều Nguyễn về Hoàng Sa, UNCLOS 1982...).
+- Phân tích mối quan hệ Nhân - Quả, động lực phát triển xã hội và mâu thuẫn giai cấp/dân tộc thúc đẩy sự kiện.
 
-4. XỬ LÝ HÌNH ẢNH DÁN HOẶC TẢI LÊN (ẢNH ĐỀ THI, TRANG SGK, BẢN ĐỒ, BÀI LÀM VIẾT TAY):
-- Khi học sinh dán ảnh hoặc gửi kèm ảnh (ảnh chụp đề kiểm tra trắc nghiệm 4 lựa chọn, câu hỏi trắc nghiệm Đúng - Sai theo format GDPT 2018, đoạn tư liệu lịch sử, sơ đồ tư duy, niên biểu, bản đồ hoặc bài viết tự luận học sinh chụp lại):
-  + Đọc và nhận diện kỹ toàn bộ văn bản, câu hỏi, các mệnh đề hoặc dữ liệu có trong hình ảnh.
-  + Trả lời cụ thể câu hỏi trong ảnh theo đúng chuẩn kiến thức SGK Lịch sử 11 GDPT 2018 (bộ Kết nối tri thức với cuộc sống).
-  + Nêu rõ đáp án đúng/sai của từng câu/ý, giải thích cặn kẽ bản chất sự kiện lịch sử, nhân vật, mốc thời gian và chỉ ra "từ khóa bẫy" nếu có.
-  + Luôn dùng giọng điệu sư phạm ân cần, khích lệ học sinh.`;
+3. TẦNG 3 - LIÊN HỆ THỰC TIỄN & BÀI HỌC THỜI ĐẠI:
+- Đúc kết bài học có giá trị vượt thời gian: Nghệ thuật "khoan thư sức dân làm kế sâu rễ bền gốc", sức mạnh khối đại đoàn kết toàn dân tộc, bài học chớp thời cơ, bài học tinh gọn bộ máy chống tham nhũng (Lê Thánh Tông, Minh Mạng), bảo vệ chủ quyền biển đảo hòa bình theo luật pháp quốc tế.
+- Khơi gợi tư duy của công dân trẻ: Ý thức trách nhiệm, lý tưởng cống hiến, tư duy độc lập và niềm tự hào dân tộc.
+
+4. TẦNG 4 - MẸO GHI NHỚ SIÊU TỐC & BÍ QUYẾT GIẢI ĐỀ BỘ GD&ĐT:
+- Đưa ra "Từ khóa then chốt (Keywords)" hoặc sơ đồ tư duy ngắn để học sinh không bị lừa bởi các bẫy đề thi trắc nghiệm (đặc biệt là dạng Đúng - Sai: bẫy đánh tráo khái niệm, bẫy mốc thời gian, bẫy từ ngữ tuyệt đối hóa như "hoàn toàn", "duy nhất", "đầu tiên").
+- Hướng dẫn phương pháp tư duy để học sinh tự mình giải quyết các câu hỏi tương tự.
+
+PHẠM VI NỘI DUNG 6 CHỦ ĐỀ CHUẨN GDPT 2018 (LỊCH SỬ 11 KẾT NỐI TRI THỨC VỚI CUỘC SỐNG):
+- Chủ đề 1: Cách mạng tư sản và sự phát triển của chủ nghĩa tư bản (Cách mạng tư sản Anh, Bắc Mỹ, Pháp; xác lập CNTB tự do cạnh tranh sang CNTB độc quyền; đặc điểm, tiềm năng và thách thức của CNTB hiện đại).
+- Chủ đề 2: Chủ nghĩa xã hội từ năm 1917 đến nay (Cách mạng tháng Mười Nga 1917, sự thành lập Liên bang Xô Viết 1922; quá trình phát triển của CNXH ở Đông Âu, Châu Á; công cuộc Đổi mới ở Việt Nam từ 1986 và Cải cách mở cửa ở Trung Quốc từ 1978).
+- Chủ đề 3: Quá trình giành độc lập dân tộc của các quốc gia Đông Nam Á (Quá trình xâm lược của thực dân phương Tây; các giai đoạn đấu tranh giành độc lập; tái thiết và phát triển; vai trò của ASEAN).
+- Chủ đề 4: Chiến tranh bảo vệ Tổ quốc và chiến tranh giải phóng dân tộc trong lịch sử Việt Nam trước năm 1945 (Các cuộc kháng chiến tiêu biểu chống Tần, Triệu, Nam Hán, Tống, Mông - Nguyên, Minh, Xiêm, Thanh; các cuộc khởi nghĩa giành độc lập; nghệ thuật quân sự và bài học lịch sử).
+- Chủ đề 5: Một số cuộc cải cách lớn trong lịch sử Việt Nam (Cải cách Hồ Quý Ly và triều Hồ cuối XIV đầu XV; Cải cách Lê Thánh Tông nửa sau XV; Cải cách Minh Mạng nửa đầu XIX; giá trị thực tiễn đối với cải cách hành chính hiện nay).
+- Chủ đề 6: Lịch sử bảo vệ chủ quyền, các quyền và lợi ích hợp pháp của Việt Nam ở Biển Đông (Vị trí chiến lược của Biển Đông; quá trình xác lập và thực thi chủ quyền đối với quần đảo Hoàng Sa và Trường Sa qua các triều đại phong kiến và nhà nước hiện đại; cơ sở lịch sử và pháp lý quốc tế UNCLOS 1982, DOC 2002; trách nhiệm thế hệ trẻ).
+
+NGUYÊN TẮC ỨNG XỬ:
+- Luôn gọi học sinh là "Em" và xưng "Thầy" (hoặc "Thầy Dũng").
+- Giọng văn truyền cảm, ấm áp, thúc đẩy tinh thần ham học.
+- Tuyệt đối trung thực với sự thật lịch sử, không thiên kiến, bám sát các nguồn tài liệu chính thống của Bộ GD&ĐT.`;
 
 // Tạo apiRouter để phục vụ đồng bộ cả khi có prefix /api hoặc không có prefix (hỗ trợ hoàn hảo Vercel Serverless Function & Express)
 const apiRouter = express.Router();
@@ -194,13 +175,13 @@ apiRouter.get('/health', (_req, res) => {
 
 // API: Chat with Gia sư AI Thầy Dũng
 apiRouter.post('/chat', async (req, res) => {
-  const { messages, context, actionType } = req.body || {};
-  const userMessages = Array.isArray(messages) ? messages.filter((m: any) => m.role === 'user') : [];
-  const lastUserText = userMessages.length > 0 ? userMessages[userMessages.length - 1].content : '';
-
   try {
+    const { messages, context, actionType } = req.body;
+
     if (!getGeminiApiKey()) {
-      return res.json({ reply: getFallbackHistoryAnswer(lastUserText) });
+      return res.status(200).json({
+        reply: `Chào em! Hiện tại trên môi trường Vercel chưa được kết nối với biến môi trường **GEMINI_API_KEY**.\n\n👉 **Hướng dẫn kích hoạt Gia sư AI trên Vercel**:\n1. Mở [Vercel Dashboard](https://vercel.com/dashboard) và chọn dự án Sử Vàng 11.\n2. Vào tab **Settings** -> chọn menu **Environment Variables**.\n3. Thêm biến mới: Key là \`GEMINI_API_KEY\` và Value là API Key của bạn từ Google AI Studio.\n4. Bấm **Save**, sau đó sang tab **Deployments** bấm dấu 3 chấm (...) ở bản deploy mới nhất -> chọn **Redeploy** là trò chuyện được ngay nhé!`,
+      });
     }
 
     if (!messages || !Array.isArray(messages)) {
@@ -229,11 +210,14 @@ apiRouter.post('/chat', async (req, res) => {
       },
     });
 
-    const reply = response.text || getFallbackHistoryAnswer(lastUserText);
+    const reply = response.text || 'Thầy xin lỗi, kết nối bị gián đoạn đôi chút. Em gửi lại câu hỏi nhé!';
     return res.json({ reply });
   } catch (error: any) {
-    console.error('Error in /api/chat, falling back to history knowledge engine:', error);
-    return res.json({ reply: getFallbackHistoryAnswer(lastUserText) });
+    console.error('Error in /api/chat:', error);
+    return res.status(200).json({
+      reply:
+        'Thầy Dũng xin chào em! Hệ thống AI đang tạm thời có lượng truy cập lớn trong vài giây. Em hãy bấm nút "🔄 Thử lại câu hỏi này ngay" bên dưới giúp Thầy nhé, hoặc hỏi Thầy về các bài học trọng tâm Lịch sử 11 (Cách mạng tư sản, Chủ nghĩa tư bản, Liên bang Xô Viết, Phong trào Cần vương...)!',
+    });
   }
 });
 
@@ -480,251 +464,142 @@ ${
   }
 });
 
+function findPresetTopic(topicTitle: string, lessonName: string): any {
+  const query = `${topicTitle || ''} ${lessonName || ''}`.toLowerCase();
+  for (const [key, data] of Object.entries(PRESET_SMART_STUDY_DATA)) {
+    if (
+      query.includes(key) ||
+      (data.topicTitle && query.includes(data.topicTitle.toLowerCase())) ||
+      (data.topicTitle && data.topicTitle.toLowerCase().includes(query)) ||
+      (data.lessonName && query.includes(data.lessonName.toLowerCase())) ||
+      (data.lessonName && data.lessonName.toLowerCase().includes(query))
+    ) {
+      return data;
+    }
+  }
+
+  if (query.includes('tư sản') || query.includes('chủ nghĩa tư bản') || query.includes('chủ đề 1') || query.includes('bài 1') || query.includes('bài 2')) return PRESET_SMART_STUDY_DATA['chu-de-1'];
+  if (query.includes('xô viết') || query.includes('chủ nghĩa xã hội') || query.includes('cnxh') || query.includes('chủ đề 2')) return PRESET_SMART_STUDY_DATA['chu-de-2'];
+  if (query.includes('đông nam á') || query.includes('asean') || query.includes('chủ đề 3')) return PRESET_SMART_STUDY_DATA['chu-de-3'];
+  if (query.includes('bảo vệ tổ quốc') || query.includes('chiến tranh') || query.includes('chủ đề 4')) return PRESET_SMART_STUDY_DATA['chu-de-4'];
+  if (query.includes('cải cách') || query.includes('hồ quý ly') || query.includes('minh mạng') || query.includes('chủ đề 5')) return PRESET_SMART_STUDY_DATA['chu-de-5'];
+  if (query.includes('biển đông') || query.includes('chủ quyền') || query.includes('chủ đề 6')) return PRESET_SMART_STUDY_DATA['chu-de-6'];
+
+  return PRESET_SMART_STUDY_DATA['chu-de-1'];
+}
+
 // API: Chế độ ôn tập thông minh (Smart Study) - Gia sư AI soạn kiến thức trọng tâm, cụ thể theo 3 cấp độ (Biết, Hiểu, Vận dụng)
 apiRouter.post('/smart-study', async (req, res) => {
   try {
     const { topicTitle, lessonName, studentKnowledgeInput, focusLevel } = req.body;
-    if (!getGeminiApiKey()) {
-      return res.status(500).json({ error: MISSING_API_KEY_ERROR });
-    }
 
     const inputContext = studentKnowledgeInput?.trim() || '';
     const mainTopic = topicTitle?.trim() || (inputContext ? 'Kiến thức theo yêu cầu học sinh' : 'Lịch sử 11 GDPT 2018');
     const mainLesson = lessonName?.trim() || (inputContext ? inputContext.slice(0, 80) : mainTopic);
 
-    const prompt = `Bạn là Thầy Dũng - Giáo viên Lịch sử THPT giàu kinh nghiệm luyện thi tốt nghiệp và bồi dưỡng học sinh giỏi môn Lịch sử 11 (Chương trình GDPT 2018).
-Học sinh vừa gửi yêu cầu để Gia sư AI soạn kiến thức ôn tập:
+    // If no custom student text provided, instantly return the rich verified preset data
+    if (!inputContext) {
+      const preset = findPresetTopic(mainTopic, mainLesson);
+      if (preset) {
+        return res.json(preset);
+      }
+    }
 
-${inputContext ? `[NỘI DUNG / GHI CHÉP / CHỦ ĐỀ HỌC SINH NHẬP]:\n"""\n${inputContext}\n"""\n` : ''}
-[CHỦ ĐỀ DỰ KIẾN]: "${mainTopic}"
-[BÀI HỌC DỰ KIẾN]: "${mainLesson}"
-${focusLevel ? `[TRỌNG TÂM CẤP ĐỘ ƯU TIÊN]: ${focusLevel}` : ''}
+    const apiKey = getGeminiApiKey();
+    if (!apiKey) {
+      const preset = findPresetTopic(mainTopic, mainLesson);
+      return res.json({
+        ...preset,
+        teacherAdvice:
+          'Chào em! Hệ thống đang hiển thị kiến thức chuẩn từ Sách giáo khoa Lịch sử 11 Kết nối tri thức. Nếu Thầy/Cô hoặc em muốn phân tích ghi chép tùy chỉnh bằng AI trên Vercel, vui lòng cấu hình biến GEMINI_API_KEY trong Project Settings -> Environment Variables nhé!',
+      });
+    }
 
-YÊU CẦU ĐẶC BIỆT CỦA HỌC SINH VÀ GIÁO VIÊN:
-Học sinh yêu cầu: "Gia sư AI soạn kiến thức ĐÚNG TRỌNG TÂM, CHI TIẾT CỤ THỂ, ở các cấp độ BIẾT, HIỂU, VẬN DỤNG".
-Tuyệt đối không viết lan man, không dùng từ ngữ mơ hồ, không bịa đặt sự kiện, bám sát SGK Lịch sử 11 (bộ Kết nối tri thức với cuộc sống / GDPT 2018).
+    const prompt = `Bạn là Thầy Dũng - Giáo viên Lịch sử THPT (Chương trình GDPT 2018).
+Học sinh yêu cầu: Soạn kiến thức cô đọng, súc tích, ĐÚNG TRỌNG TÂM ở 3 cấp độ: BIẾT, HIỂU, VẬN DỤNG.
+Bám sát SGK Lịch sử 11 Kết nối tri thức. Viết ngắn gọn, trực diện, không dài dòng.
 
-BẮT BUỘC PHÂN ĐỊNH RÕ RÀNG VÀ SÂU SẮC 3 CẤP ĐỘ NHẬN THỨC:
+[CHỦ ĐỀ]: "${mainTopic}"
+[BÀI HỌC]: "${mainLesson}"
+${inputContext ? `[GHI CHÉP HỌC SINH]:\n"""\n${inputContext}\n"""\n` : ''}
+${focusLevel ? `[TRỌNG TÂM CẤP ĐỘ]: ${focusLevel}` : ''}
 
-1. CẤP ĐỘ 1: BIẾT (NHẬN BIẾT - MỨC 1):
-- Mục tiêu: Tái hiện, ghi nhớ chính xác tuyệt đối các dữ kiện lịch sử mà không cần suy diễn.
-- Yêu cầu biên soạn cụ thể:
-  + Nêu rõ các Mốc thời gian then chốt (năm, tháng, ngày nếu có) gắn với từng bước ngoặt.
-  + Nêu rõ Nhân vật lịch sử tiêu biểu (tên tuổi, chức danh, hành động cụ thể).
-  + Nêu rõ Sự kiện lịch sử, địa danh, tên hiệp ước, văn kiện cụ thể.
-  + Khái niệm, thuật ngữ lịch sử cơ bản cần hiểu đúng từng chữ.
-  + Mỗi ý phải có tiêu đề (title), nội dung mô tả chi tiết (detail) và từ khóa cốt lõi cần nhớ nằm lòng (highlight).
-  + Đưa ra 2-3 mẹo ghi nhớ nhanh (tips) cho cấp độ Nhận biết.
-
-2. CẤP ĐỘ 2: HIỂU (THÔNG HIỂU - MỨC 2):
-- Mục tiêu: Thấu hiểu bản chất lịch sử, giải thích mối quan hệ nhân quả và phân biệt các khái niệm/sự kiện dễ nhầm lẫn.
-- Yêu cầu biên soạn cụ thể:
-  + Phân tích Bản chất lịch sử và tính chất của sự kiện/cuộc cách mạng/cải cách/cuộc kháng chiến.
-  + Phân tích Nguyên nhân sâu xa (kinh tế - xã hội) và Duyên cớ trực tiếp.
-  + Lý giải Vì sao thắng lợi / Vì sao thất bại / Vì sao bùng nổ (nguyên nhân chủ quan và khách quan).
-  + Đưa ra bảng so sánh cụ thể giữa 2 đối tượng hoặc 2 giai đoạn dễ nhầm lẫn (Thời gian, Hoàn cảnh, Mục tiêu, Nội dung, Kết quả, Ý nghĩa).
-  + Cảnh báo các "bẫy đề thi" và các lỗi học sinh thường nhầm trong đề thi trắc nghiệm.
-  + Đưa ra mẹo tư duy logic (tips) cho cấp độ Thông hiểu.
-
-3. CẤP ĐỘ 3: VẬN DỤNG & VẬN DỤNG CAO (MỨC 3):
-- Mục tiêu: Đánh giá, liên hệ lịch sử với hiện tại, rút ra bài học kinh nghiệm sâu sắc cho công cuộc xây dựng, bảo vệ Tổ quốc hôm nay.
-- Yêu cầu biên soạn cụ thể:
-  + Đúc kết các Bài học lịch sử đắt giá (về phát huy khối đại đoàn kết toàn dân, nghệ thuật quân sự độc đáo, chính sách ngoại giao hòa hiếu nhưng kiên quyết, chớp thời cơ, tự lực tự cường, bài học cải cách tinh gọn bộ máy...).
-  + Liên hệ thực tiễn Việt Nam hôm nay (bảo vệ chủ quyền biên giới, biển đảo; hội nhập kinh tế quốc tế sâu rộng; giữ gìn bản sắc văn hóa; xây dựng nhà nước pháp quyền...).
-  + Hướng dẫn cách mạng tư duy và lập luận để giải quyết câu hỏi mở / câu hỏi khảo thí 2025.
-  + Đưa ra bí quyết đạt điểm 9-10 (tips) cho cấp độ Vận dụng.
-
-KÈM THEO HỆ THỐNG ĐÁNH GIÁ NĂNG LỰC:
-- 3 câu hỏi trắc nghiệm chuẩn mực:
-  + Câu 1: Mức độ Nhận biết (nhan_biet)
-  + Câu 2: Mức độ Thông hiểu (thong_hieu)
-  + Câu 3: Mức độ Vận dụng (van_dung)
-  Mỗi câu có 4 phương án A, B, C, D, chỉ rõ đáp án đúng và lời giải thích sâu sắc, cặn kẽ của Thầy Dũng.
-- Lời dặn dò, động viên ân cần mang phong cách sư phạm của Thầy Dũng (teacherAdvice).
-
-Trả về đúng định dạng JSON thuần túy (không bọc markdown thừa ngoài JSON):
+Trả về DUY NHẤT định dạng JSON:
 {
-  "topicTitle": "<Tên chủ đề trọng tâm chuẩn hóa>",
-  "lessonName": "<Tên bài học/Nội dung trọng tâm>",
-  "inputContentSummary": "<Tóm tắt 1-2 câu ngắn gọn về nội dung học sinh đã nhập>",
+  "topicTitle": "${mainTopic}",
+  "lessonName": "${mainLesson}",
+  "inputContentSummary": "<Tóm tắt 1 câu>",
   "levelsKnowledge": {
     "nhanBiet": {
       "level": "nhan_biet",
-      "levelName": "Cấp độ 1: BIẾT (Nhận biết - Dữ kiện cốt lõi)",
+      "levelName": "Cấp độ 1: BIẾT (Nhận biết)",
       "badge": "Mức 1",
-      "summary": "<Tóm tắt yêu cầu cần đạt: Ghi nhớ chính xác mốc thời gian, nhân vật, sự kiện, địa danh, khái niệm>",
-      "points": [
-        {
-          "title": "<Tên dữ kiện 1 (Ví dụ: Mốc thời gian bùng nổ, hiệp ước, nhân vật...)>",
-          "detail": "<Nội dung cụ thể, chính xác theo SGK>",
-          "highlight": "<Dữ kiện cốt lõi bắt buộc nhớ nằm lòng>"
-        },
-        {
-          "title": "<Tên dữ kiện 2>",
-          "detail": "<Nội dung cụ thể>",
-          "highlight": "<Từ khóa quan trọng>"
-        },
-        {
-          "title": "<Tên dữ kiện 3>",
-          "detail": "<Nội dung cụ thể>",
-          "highlight": "<Từ khóa quan trọng>"
-        }
-      ],
-      "tips": [
-        "<Mẹo nhớ dữ kiện mốc thời gian>",
-        "<Mẹo nhớ nhân vật và địa danh>"
-      ]
+      "summary": "<Tóm tắt>",
+      "points": [{ "title": "<Tiêu đề>", "detail": "<1 câu chi tiết>", "highlight": "<Từ khóa>" }],
+      "tips": ["<1 mẹo nhớ nhanh>"]
     },
     "thongHieu": {
       "level": "thong_hieu",
-      "levelName": "Cấp độ 2: HIỂU (Thông hiểu - Bản chất & Nhân quả)",
+      "levelName": "Cấp độ 2: HIỂU (Thông hiểu)",
       "badge": "Mức 2",
-      "summary": "<Tóm tắt yêu cầu: Thấu hiểu nguyên nhân sâu xa, bản chất vấn đề, so sánh và lý giải quan hệ biện chứng>",
-      "points": [
-        {
-          "title": "<Phân tích nguyên nhân sâu xa & duyên cớ trực tiếp>",
-          "detail": "<Lý giải chi tiết vì sao lại diễn ra>",
-          "highlight": "<Mấu chốt bản chất nguyên nhân>"
-        },
-        {
-          "title": "<Bản chất và tính chất lịch sử>",
-          "detail": "<Phân tích tính chất của sự kiện, cuộc cách mạng hay cải cách>",
-          "highlight": "<Từ khóa tính chất cốt lõi>"
-        },
-        {
-          "title": "<Lý giải nguyên nhân thắng lợi hoặc nguyên nhân thất bại>",
-          "detail": "<Phân tích cụ thể các yếu tố chủ quan và khách quan>",
-          "highlight": "<Yếu tố quyết định nhất>"
-        }
-      ],
-      "tips": [
-        "<Mẹo phân biệt nguyên nhân sâu xa với duyên cớ trực tiếp>",
-        "<Mẹo nhận diện bẫy đề thi>"
-      ]
+      "summary": "<Tóm tắt>",
+      "points": [{ "title": "<Tiêu đề>", "detail": "<1 câu bản chất>", "highlight": "<Từ khóa>" }],
+      "tips": ["<1 mẹo suy luận>"]
     },
     "vanDung": {
       "level": "van_dung",
-      "levelName": "Cấp độ 3: VẬN DỤNG (Liên hệ & Bài học lịch sử)",
+      "levelName": "Cấp độ 3: VẬN DỤNG",
       "badge": "Mức 3",
-      "summary": "<Tóm tắt yêu cầu: Đúc kết bài học kinh nghiệm và liên hệ sâu sắc với thực tiễn xây dựng, bảo vệ Tổ quốc hôm nay>",
-      "points": [
-        {
-          "title": "<Bài học lịch sử đắt giá>",
-          "detail": "<Phân tích bài học kinh nghiệm sâu sắc rút ra từ sự kiện>",
-          "highlight": "<Giá trị trường tồn của bài học>"
-        },
-        {
-          "title": "<Liên hệ thực tiễn Việt Nam hiện nay>",
-          "detail": "<Vận dụng vào thực tế đất nước: phát triển kinh tế, giữ gìn chủ quyền, đối ngoại hoặc cải cách bộ máy>",
-          "highlight": "<Hành động thiết thực hôm nay>"
-        },
-        {
-          "title": "<Tư duy giải quyết câu hỏi mở & liên hệ thực tiễn>",
-          "detail": "<Phương pháp tiếp cận và liên hệ vấn đề trong đề thi tốt nghiệp GDPT 2018>",
-          "highlight": "<Bí quyết đạt điểm tối đa>"
-        }
-      ],
-      "tips": [
-        "<Cách lập luận logic, có dẫn chứng thực tế>",
-        "<Từ khóa nâng điểm phần liên hệ thực tiễn>"
-      ]
+      "summary": "<Tóm tắt>",
+      "points": [{ "title": "<Tiêu đề>", "detail": "<1 câu bài học/liên hệ>", "highlight": "<Từ khóa>" }],
+      "tips": ["<1 mẹo vận dụng>"]
     }
   },
-  "coreKnowledge": [
-    "<Ý cốt lõi 1>",
-    "<Ý cốt lõi 2>",
-    "<Ý cốt lõi 3>",
-    "<Ý cốt lõi 4>"
-  ],
+  "coreKnowledge": ["<Ý cốt lõi 1>", "<Ý cốt lõi 2>"],
   "keywords": {
-    "timeline": ["<Mốc 1>", "<Mốc 2>", "<Mốc 3>"],
-    "characters": ["<Nhân vật 1>", "<Nhân vật 2>"],
-    "events": ["<Sự kiện 1>", "<Sự kiện 2>"],
-    "locations": ["<Địa danh 1>", "<Địa danh 2>"],
-    "documents": ["<Văn kiện / Hiệp ước 1>"],
-    "terms": ["<Khái niệm / Thuật ngữ 1>", "<Khái niệm 2>"]
+    "timeline": ["<Mốc 1>"],
+    "characters": ["<Nhân vật 1>"],
+    "events": ["<Sự kiện 1>"],
+    "locations": ["<Địa danh 1>"],
+    "documents": ["<Văn kiện 1>"],
+    "terms": ["<Khái niệm 1>"]
   },
-  "causeAndEffect": [
-    {
-      "cause": "<Nguyên nhân sâu xa & trực tiếp>",
-      "event": "<Diễn biến chính>",
-      "result": "<Kết quả>",
-      "significance": "<Ý nghĩa lịch sử>",
-      "impact": "<Tác động tới Việt Nam và thế giới>"
-    }
-  ],
+  "causeAndEffect": [{ "cause": "<Nguyên nhân>", "event": "<Sự kiện>", "result": "<Kết quả>", "significance": "<Ý nghĩa>", "impact": "<Tác động>" }],
   "comparison": {
     "title": "<Tên bảng so sánh>",
-    "target1Name": "<Tên đối tượng 1>",
-    "target2Name": "<Tên đối tượng 2>",
-    "rows": [
-      { "aspect": "Thời gian & Hoàn cảnh", "target1": "<...>", "target2": "<...>" },
-      { "aspect": "Bản chất & Mục tiêu", "target1": "<...>", "target2": "<...>" },
-      { "aspect": "Nội dung chủ yếu", "target1": "<...>", "target2": "<...>" },
-      { "aspect": "Kết quả & Ý nghĩa", "target1": "<...>", "target2": "<...>" }
-    ]
+    "target1Name": "<Đối tượng 1>",
+    "target2Name": "<Đối tượng 2>",
+    "rows": [{ "aspect": "<Tiêu chí>", "target1": "<Nội dung 1>", "target2": "<Nội dung 2>" }]
   },
-  "commonMistakes": [
-    {
-      "trap": "<Nội dung học sinh hay nhầm lẫn>",
-      "truth": "<Bản chất đúng trong SGK>",
-      "tip": "<Mẹo ghi nhớ của Thầy Dũng>"
-    }
-  ],
-  "mindmapSteps": [
-    "1. Bối cảnh & Nguyên nhân: ...",
-    "2. Diễn biến then chốt: ...",
-    "3. Bước ngoặt lịch sử: ...",
-    "4. Kết quả & Đỉnh cao: ...",
-    "5. Ý nghĩa & Bài học: ..."
-  ],
+  "commonMistakes": [{ "trap": "<Bẫy>", "truth": "<Bản chất>", "tip": "<Mẹo tránh>" }],
+  "mindmapSteps": ["1. ...", "2. ...", "3. ..."],
   "threeLevelQuestions": [
-    {
-      "level": "nhan_biet",
-      "question": "<Câu hỏi mức 1 - Nhận biết>",
-      "options": ["A. ...", "B. ...", "C. ...", "D. ..."],
-      "correctIndex": 0,
-      "explanation": "<Giải thích cặn kẽ>"
-    },
-    {
-      "level": "thong_hieu",
-      "question": "<Câu hỏi mức 2 - Thông hiểu>",
-      "options": ["A. ...", "B. ...", "C. ...", "D. ..."],
-      "correctIndex": 1,
-      "explanation": "<Giải thích cặn kẽ>"
-    },
-    {
-      "level": "van_dung",
-      "question": "<Câu hỏi mức 3 - Vận dụng>",
-      "options": ["A. ...", "B. ...", "C. ...", "D. ..."],
-      "correctIndex": 2,
-      "explanation": "<Giải thích cặn kẽ>"
-    }
+    { "level": "nhan_biet", "question": "<Câu hỏi 1>", "options": ["A. ...", "B. ...", "C. ...", "D. ..."], "correctIndex": 0, "explanation": "<Giải thích ngắn>" },
+    { "level": "thong_hieu", "question": "<Câu hỏi 2>", "options": ["A. ...", "B. ...", "C. ...", "D. ..."], "correctIndex": 1, "explanation": "<Giải thích ngắn>" },
+    { "level": "van_dung", "question": "<Câu hỏi 3>", "options": ["A. ...", "B. ...", "C. ...", "D. ..."], "correctIndex": 2, "explanation": "<Giải thích ngắn>" }
   ],
-  "teacherAdvice": "<Lời dặn dò tâm huyết, động viên học sinh ôn thi tự tin của Thầy Dũng>"
+  "teacherAdvice": "<Lời khuyên ân cần của Thầy Dũng>"
 }`;
 
     const response = await generateContentWithRetryAndFallback({
       contents: prompt,
       config: {
         responseMimeType: 'application/json',
-        temperature: 0.35,
+        temperature: 0.3,
       },
     });
 
     const parsed = safeJsonParse(response.text || '', {});
-    if (!parsed || Object.keys(parsed).length === 0) {
-      throw new Error('Không thể phân tích nội dung ôn tập thông minh từ AI. Vui lòng thử lại nhé!');
+    if (parsed && Object.keys(parsed).length > 0) {
+      return res.json(parsed);
     }
-    return res.json(parsed);
+
+    const fallback = findPresetTopic(mainTopic, mainLesson);
+    return res.json(fallback);
   } catch (error: any) {
     console.error('Error in /api/smart-study:', error);
-    const rawError = String(error?.message || '');
-    let cleanMessage = 'Hệ thống đang quá tải tạm thời. Em vui lòng thử lại sau vài giây nhé!';
-    if (rawError && !rawError.includes('503') && !rawError.includes('high demand') && !rawError.includes('429') && !rawError.includes('{"error"')) {
-      cleanMessage = rawError;
-    }
-    return res.status(500).json({ error: cleanMessage });
+    const fallback = PRESET_SMART_STUDY_DATA['chu-de-1'];
+    return res.json(fallback);
   }
 });
 
